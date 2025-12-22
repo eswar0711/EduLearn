@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: global background + font */
+body {
+  background-color: #F9FAFB;
+  color: #111827;
+}
