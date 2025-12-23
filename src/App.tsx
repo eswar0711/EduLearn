@@ -2,14 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getCurrentUser } from './utils/auth';
 import type { AuthUser } from './utils/auth';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 // Pages
 import LoginPage from './pages/LoginPage';
+
 
 // Components - Faculty
 import FacultyDashboard from './components/FacultyDashboard';
 import AssessmentCreation from './components/AssessmentCreation';
 import FacultyCourseMaterials from './components/FacultyCourseMaterials';
+
 
 // Components - Student
 import StudentDashboard from './components/StudentDashboard';
@@ -19,8 +24,10 @@ import CoursePage from './components/CoursePage';
 import ScoreCalculatorModule from './components/ScoreCalculator/ScoreCalculatorModule';
 import AIAssistantModule from './components/AIAssistant/AIAssistantModule';
 
+
 // Components - User Settings
 import { ChangePassword, UserProfile as UserProfileComponent } from './components/UserSettings';
+
 
 // Components - Admin
 import AdminDashboard from './components/Admin/AdminDashboardd';
@@ -28,11 +35,13 @@ import AdminUserManagement from './components/Admin/AdminUserManagement';
 import AdminAnalytics from './components/Admin/AdminAnalytics';
 import AdminSubmissions from './components/Admin/AdminSubmissions';
 
+
 // ===== NEW: Coding Practice Lab Components =====
 import StudentCodingLabPage from './pages/CodingPractice/StudentCodingLabPage';
 import FacultyCodingManagement from './pages/CodingPractice/FacultyCodingManagement';
 import AdminCodingAnalytics from './pages/CodingPractice/AdminCodingAnalytics';
 import SubmissionView from './pages/CodingPractice/SubmissionView';
+
 
 // Type conversion utility
 const convertAuthUserToComponentUser = (authUser: AuthUser): any => {
@@ -47,13 +56,17 @@ const convertAuthUserToComponentUser = (authUser: AuthUser): any => {
   };
 };
 
+
+
 const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     checkUser();
   }, []);
+
 
   const checkUser = async () => {
     try {
@@ -67,6 +80,7 @@ const App: React.FC = () => {
     }
   };
 
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -75,16 +89,32 @@ const App: React.FC = () => {
     );
   }
 
+
   const componentUser = user ? convertAuthUserToComponentUser(user) : null;
+
 
   return (
     <Router>
+      {/* Toast Container - Global for entire app */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
       <Routes>
         {/* ===== LOGIN ROUTE ===== */}
         <Route
           path="/login"
           element={!user ? <LoginPage onLogin={checkUser} /> : <Navigate to="/" />}
         />
+
 
         {/* ===== ADMIN ROUTES ===== */}
         <Route
@@ -128,6 +158,7 @@ const App: React.FC = () => {
           }
         />
 
+
         {/* ===== CODING PRACTICE LAB ROUTES (NEW) ===== */}
         {/* Student - View and solve problems */}
         <Route
@@ -141,6 +172,7 @@ const App: React.FC = () => {
           }
         />
 
+
         {/* Faculty - Manage coding problems */}
         <Route
           path="/coding-management"
@@ -152,6 +184,7 @@ const App: React.FC = () => {
             )
           }
         />
+
 
         {/* Admin - Coding analytics */}
         <Route
@@ -165,6 +198,7 @@ const App: React.FC = () => {
           }
         />
 
+
         {/* View submission details - accessible to student (own) and admin/faculty */}
         <Route
           path="/submission/:id"
@@ -176,6 +210,7 @@ const App: React.FC = () => {
             )
           }
         />
+
 
         {/* ===== MAIN DASHBOARD ROUTE ===== */}
         <Route
@@ -194,6 +229,7 @@ const App: React.FC = () => {
             )
           }
         />
+
 
         {/* ===== FACULTY ROUTES ===== */}
         <Route
@@ -216,6 +252,7 @@ const App: React.FC = () => {
             )
           }
         />
+
 
         {/* ===== STUDENT ROUTES ===== */}
         <Route
@@ -259,6 +296,7 @@ const App: React.FC = () => {
           }
         />
 
+
         {/* ===== COMMON ROUTES ===== */}
         <Route
           path="/results/:submissionId"
@@ -291,11 +329,13 @@ const App: React.FC = () => {
           }
         />
 
+
         {/* ===== CATCH-ALL ROUTE ===== */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );
 };
+
 
 export default App;

@@ -1,14 +1,16 @@
-// src/components/FacultyCourseMaterials.tsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Subject, CourseMaterial } from '../utils/supabaseClient';
 import NavigationSidebar from './NavigationSidebar';
-import SubjectManagement from './SubjectManagement';  // ← NEW IMPORT
+import SubjectManagement from './SubjectManagement';
 import { Upload, Trash2, FileText, BookOpen } from 'lucide-react';
+import { toast } from 'react-toastify';
+
 
 interface FacultyCourseMaterialsProps {
   user: User;
 }
+
 
 const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -23,9 +25,11 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
   const [materialType, setMaterialType] = useState<'pdf' | 'syllabus' | 'notes' | 'assignment'>('pdf');
   const [file, setFile] = useState<File | null>(null);
 
+
   useEffect(() => {
     fetchData();
   }, []);
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -36,7 +40,9 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
         .select('*')
         .order('semester', { ascending: true });
 
+
       setSubjects(subjectsData || []);
+
 
       // Fetch materials uploaded by this faculty
       const { data: materialsData } = await supabase
@@ -45,48 +51,57 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
         .eq('faculty_id', user.id)
         .order('created_at', { ascending: false });
 
+
       setMaterials(materialsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Error fetching data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       // Validate file type
       if (selectedFile.type !== 'application/pdf') {
-        alert('Please upload only PDF files');
+        toast.error('Please upload only PDF files');
         return;
       }
       // Validate file size (max 10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
-        alert('File size should not exceed 10MB');
+        toast.error('File size should not exceed 10MB');
         return;
       }
       setFile(selectedFile);
+      toast.success('File selected successfully');
     }
   };
+
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
+
     if (!selectedSubject || !title || !file) {
-      alert('Please fill all required fields and select a file');
+      toast.error('Please fill all required fields and select a file');
       return;
     }
 
+
     setUploading(true);
+
 
     try {
       // Get subject details
       const subject = subjects.find(s => s.id === selectedSubject);
       if (!subject) {
-        alert('Subject not found');
+        toast.error('Subject not found');
         return;
       }
+
 
       // Upload file to Supabase Storage
       const fileName = `${subject.code}/${Date.now()}_${file.name}`;
@@ -94,7 +109,9 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
         .from('course-materials')
         .upload(fileName, file);
 
+
       if (uploadError) throw uploadError;
+
 
       // Insert material record into database
       const { error: dbError } = await supabase
@@ -112,9 +129,11 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
           semester: subject.semester,
         });
 
+
       if (dbError) throw dbError;
 
-      alert('Material uploaded successfully!');
+
+      toast.success('Material uploaded successfully!');
       
       // Reset form
       setSelectedSubject('');
@@ -127,14 +146,16 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
       fetchData();
     } catch (error) {
       console.error('Error uploading material:', error);
-      alert('Error uploading material. Please try again.');
+      toast.error('Error uploading material. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
+
   const handleDelete = async (material: CourseMaterial) => {
     if (!confirm('Are you sure you want to delete this material?')) return;
+
 
     try {
       // Delete from storage
@@ -142,7 +163,9 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
         .from('course-materials')
         .remove([material.file_url]);
 
+
       if (storageError) throw storageError;
+
 
       // Delete from database
       const { error: dbError } = await supabase
@@ -150,21 +173,25 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
         .delete()
         .eq('id', material.id);
 
+
       if (dbError) throw dbError;
 
-      alert('Material deleted successfully!');
+
+      toast.success('Material deleted successfully!');
       fetchData();
     } catch (error) {
       console.error('Error deleting material:', error);
-      alert('Error deleting material. Please try again.');
+      toast.error('Error deleting material. Please try again.');
     }
   };
+
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown';
     const mb = bytes / (1024 * 1024);
     return mb < 1 ? `${(bytes / 1024).toFixed(1)} KB` : `${mb.toFixed(1)} MB`;
   };
+
 
   const getMaterialTypeColor = (type: string) => {
     const colors: Record<string, string> = {
@@ -175,6 +202,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
     };
     return colors[type] || colors.pdf;
   };
+
 
   if (loading) {
     return (
@@ -187,9 +215,11 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
     );
   }
 
+
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <NavigationSidebar user={user} />
+
 
       <div className="flex-1 p-8">
         <div className="mb-8">
@@ -197,9 +227,10 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
           <p className="text-gray-600">Upload and manage study materials for your courses</p>
         </div>
 
-        {/* ==================== NEW: Subject Management ==================== */}
+
+        {/* Subject Management */}
         <SubjectManagement onSubjectAdded={fetchData} />
-        {/* ================================================================= */}
+
 
         {/* Upload Form */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
@@ -212,6 +243,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
               <p className="text-sm text-gray-600">Add study materials for your courses</p>
             </div>
           </div>
+
 
           <form onSubmit={handleUpload} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -235,6 +267,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
                 </select>
               </div>
 
+
               {/* Material Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -254,6 +287,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
               </div>
             </div>
 
+
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -269,6 +303,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
               />
             </div>
 
+
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -282,6 +317,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               />
             </div>
+
 
             {/* File Upload */}
             <div>
@@ -307,6 +343,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
               <p className="mt-2 text-xs text-gray-500">Maximum file size: 10MB</p>
             </div>
 
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -328,6 +365,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
           </form>
         </div>
 
+
         {/* Uploaded Materials List */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
@@ -336,6 +374,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
               {materials.length} material{materials.length !== 1 ? 's' : ''} uploaded
             </p>
           </div>
+
 
           {materials.length === 0 ? (
             <div className="p-8 text-center">
@@ -397,5 +436,6 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
     </div>
   );
 };
+
 
 export default FacultyCourseMaterials;

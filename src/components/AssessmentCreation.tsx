@@ -1,15 +1,18 @@
-// src/components/AssessmentCreation.tsx
 import React, { useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User } from '../utils/supabaseClient';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import NavigationSidebar from './NavigationSidebar';
 import { PlusCircle, Trash2, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+
 interface AssessmentCreationProps {
   user: User;
 }
+
 
 interface QuestionForm {
   type: 'MCQ' | 'Theory';
@@ -19,6 +22,7 @@ interface QuestionForm {
   marks: number;
 }
 
+
 const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
@@ -27,6 +31,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
   const [duration, setDuration] = useState(60);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
   const [loading, setLoading] = useState(false);
+
 
   const addQuestion = (type: 'MCQ' | 'Theory') => {
     setQuestions([
@@ -41,11 +46,13 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
     ]);
   };
 
+
   const updateQuestion = (index: number, field: string, value: any) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
   };
+
 
   const updateOption = (qIndex: number, oIndex: number, value: string) => {
     const updated = [...questions];
@@ -53,15 +60,52 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
     setQuestions(updated);
   };
 
+
   const removeQuestion = (index: number) => {
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation
+    if (!title.trim() || !subject.trim() || !unit.trim()) {
+      toast.warning('Please fill in all basic information fields', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
     if (questions.length === 0) {
-      alert('Please add at least one question');
+      toast.error('Please add at least one question', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
+    // Validate all questions are complete
+    const incompleteQuestion = questions.findIndex(q => !q.question_text.trim());
+    if (incompleteQuestion !== -1) {
+      toast.error(`Question ${incompleteQuestion + 1} is missing text`, {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
+    const mcqWithoutAnswer = questions.findIndex(q => q.type === 'MCQ' && !q.correct_answer);
+    if (mcqWithoutAnswer !== -1) {
+      toast.error(`MCQ ${mcqWithoutAnswer + 1} is missing a correct answer`, {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
       return;
     }
 
@@ -99,19 +143,48 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
 
       if (questionsError) throw questionsError;
 
-      alert('Assessment created successfully!');
-      navigate('/');
+      // Success toast with custom styling
+      toast.success('🎉 Assessment created successfully!', {
+        position: 'top-right',
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Navigate after toast
+      setTimeout(() => navigate('/'), 2000);
     } catch (error: any) {
       console.error('Error creating assessment:', error);
-      alert('Error creating assessment: ' + error.message);
+      toast.error(`❌ Error: ${error.message || 'Failed to create assessment'}`, {
+        position: 'top-right',
+        autoClose: 4000,
+        hideProgressBar: false,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <NavigationSidebar user={user} />
+
+      {/* Toast Container - renders all notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
@@ -134,7 +207,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -147,7 +220,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                     type="number"
                     value={duration}
                     onChange={(e) => setDuration(parseInt(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     min="1"
                     required
                   />
@@ -161,7 +234,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                     type="text"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -174,7 +247,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                     type="text"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -184,12 +257,12 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
             {/* Questions */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Questions</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Questions ({questions.length})</h3>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => addQuestion('MCQ')}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
                   >
                     <PlusCircle className="w-4 h-4" />
                     Add MCQ
@@ -239,7 +312,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                             onChange={(e) =>
                               updateQuestion(qIndex, 'question_text', e.target.value)
                             }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             rows={2}
                             required
                           />
@@ -259,7 +332,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                                     onChange={(e) =>
                                       updateOption(qIndex, oIndex, e.target.value)
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     required
                                   />
                                 </div>
@@ -275,7 +348,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                                 onChange={(e) =>
                                   updateQuestion(qIndex, 'correct_answer', e.target.value)
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 required
                               >
                                 <option value="">Select correct answer</option>
@@ -299,7 +372,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                             onChange={(e) =>
                               updateQuestion(qIndex, 'marks', parseInt(e.target.value))
                             }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             min="1"
                             required
                           />
@@ -323,7 +396,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 border border-gray-300 text-blue-700 rounded-lg  hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" />
                 {loading ? 'Creating...' : 'Create Assessment'}
