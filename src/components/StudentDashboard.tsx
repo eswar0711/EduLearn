@@ -276,7 +276,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
                         ) : (
                           <button
                             onClick={() => handleStartTest(assessment)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                            className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
                           >
                             <PlayCircle className="w-4 h-4" />
                             Start Test

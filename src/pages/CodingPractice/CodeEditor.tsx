@@ -9,8 +9,6 @@ import {
 import {
   CheckCircle,
   AlertCircle,
-  // Lock,
-  // ChevronDown,
   Play,
   Upload
 } from 'lucide-react'
@@ -41,8 +39,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const [result, setResult] = useState<ExecutionResult | null>(null)
   const [loading, setLoading] = useState(false)
-  // const [expandHiddenTests, setExpandHiddenTests] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  /* 🔔 TOAST STATE */
+  const [toast, setToast] = useState<{
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
 
   const language = externalLanguage || question?.programming_language || 'python'
 
@@ -110,11 +113,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       await executeAndSaveCode(question.id, user.id, code, language)
       setSubmitted(true)
       onSubmitSuccess?.()
-      alert('✅ Solution submitted successfully')
+
+      /* ✅ SUCCESS TOAST */
+      setToast({ message: 'Solution submitted successfully!', type: 'success' })
     } catch {
-      alert('❌ Submission failed')
+      /* ❌ ERROR TOAST */
+      setToast({ message: 'Submission failed. Try again!', type: 'error' })
     } finally {
       setLoading(false)
+      setTimeout(() => setToast(null), 3000) // auto-hide
     }
   }
 
@@ -122,7 +129,19 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     result && result.testsPassed === result.totalTests && !submitted
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+
+      {/* 🔔 TOAST UI */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white flex items-center gap-2 animate-fade-in ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          }`}
+        >
+          {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
 
       {/* ================= CODE EDITOR ================= */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -152,7 +171,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           {loading ? 'Running...' : 'Run Code'}
         </button>
       </div>
-      {/* =============================================== */}
 
       {/* ================= RESULT ================= */}
       {result && (
@@ -196,7 +214,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           )}
         </div>
       )}
-      {/* =============================================== */}
 
       {/* ================= SUBMIT ================= */}
       {question && user && (
@@ -213,7 +230,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           {submitted ? 'Submitted' : 'Submit Solution'}
         </button>
       )}
-      {/* =============================================== */}
     </div>
   )
 }

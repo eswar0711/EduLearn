@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../utils/supabaseClient'
-//import type { User } from '../../utils/supabaseClient'
 import { BarChart3, Users, BookOpen, Download, TrendingUp, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
+import { toast } from 'react-toastify'
+
 
 interface AdminCodingAnalyticsProps {}
+
 
 interface CodingAnalytics {
   totalProblems: number
@@ -15,6 +18,7 @@ interface CodingAnalytics {
   difficultyDistribution: { difficulty: string; count: number }[]
   languagePopularity: { language: string; count: number }[]
 }
+
 
 const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
   const navigate = useNavigate()
@@ -28,45 +32,56 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
     languagePopularity: [],
   })
   const [loading, setLoading] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
+
 
   useEffect(() => {
     fetchCodingAnalytics()
   }, [])
 
+
   const fetchCodingAnalytics = async () => {
     try {
       console.log('📊 Fetching coding analytics...')
+
 
       // Total Problems
       const { data: problemsData, error: problemsError } = await supabase
         .from('coding_questions')
         .select('id, title, difficulty, programming_language', { count: 'exact' })
 
+
       if (problemsError) {
         console.error('❌ Error fetching problems:', problemsError)
         throw problemsError
       }
 
+
       const totalProblems = problemsData?.length || 0
       console.log('✓ Total problems:', totalProblems)
+
 
       // Total Submissions
       const { data: submissionsData, error: submissionsError } = await supabase
         .from('coding_submissions')
         .select('id, question_id, student_id, status', { count: 'exact' })
 
+
       if (submissionsError) {
         console.error('❌ Error fetching submissions:', submissionsError)
         throw submissionsError
       }
 
+
       const totalSubmissions = submissionsData?.length || 0
       console.log('✓ Total submissions:', totalSubmissions)
+
 
       // Total Unique Students
       const uniqueStudents = new Set(submissionsData?.map(s => s.student_id) || [])
       const totalStudents = uniqueStudents.size
       console.log('✓ Total students:', totalStudents)
+
 
       // Calculate Acceptance Rate
       const acceptedCount = submissionsData?.filter(s => s.status === 'accepted').length || 0
@@ -75,12 +90,14 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
         : 0
       console.log('✓ Acceptance rate:', averageAcceptanceRate)
 
+
       // Problem Performance
       const problemMap = new Map<string, { title: string; submissions: number; accepted: number }>()
       
       problemsData?.forEach(p => {
         problemMap.set(p.id, { title: p.title, submissions: 0, accepted: 0 })
       })
+
 
       submissionsData?.forEach(s => {
         const problem = problemMap.get(s.question_id)
@@ -91,6 +108,7 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
           }
         }
       })
+
 
       const problemPerformance = Array.from(problemMap.values())
         .map(p => ({
@@ -104,16 +122,19 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
         .sort((a, b) => b.submissions - a.submissions)
       console.log('✓ Problem performance calculated')
 
+
       // Difficulty Distribution
       const difficultyMap = new Map<string, number>()
       problemsData?.forEach(p => {
         difficultyMap.set(p.difficulty, (difficultyMap.get(p.difficulty) || 0) + 1)
       })
 
+
       const difficultyDistribution = Array.from(difficultyMap.entries())
         .map(([difficulty, count]) => ({ difficulty, count }))
         .sort((a, b) => b.count - a.count)
       console.log('✓ Difficulty distribution calculated')
+
 
       // Language Popularity
       const languageMap = new Map<string, number>()
@@ -125,10 +146,12 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
         }
       })
 
+
       const languagePopularity = Array.from(languageMap.entries())
         .map(([language, count]) => ({ language, count }))
         .sort((a, b) => b.count - a.count)
       console.log('✓ Language popularity calculated')
+
 
       setAnalytics({
         totalProblems,
@@ -140,6 +163,7 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
         languagePopularity,
       })
 
+
       console.log('✓ Analytics loaded successfully')
     } catch (error) {
       console.error('❌ Error fetching analytics:', error)
@@ -148,47 +172,98 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
     }
   }
 
-  const exportReport = () => {
-    const reportContent = `
-Coding Lab - Analytics Report
-Generated: ${new Date().toLocaleString()}
 
-=== OVERVIEW ===
-Total Problems: ${analytics.totalProblems}
-Total Submissions: ${analytics.totalSubmissions}
-Total Students: ${analytics.totalStudents}
-Average Acceptance Rate: ${analytics.averageAcceptanceRate}%
+  const exportToExcel = async () => {
+    setIsExporting(true)
 
-=== PROBLEM PERFORMANCE ===
-${analytics.problemPerformance
-  .map(
-    p =>
-      `${p.title}: ${p.submissions} submissions (${p.acceptanceRate}% acceptance rate)`
-  )
-  .join('\n')}
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new()
 
-=== DIFFICULTY DISTRIBUTION ===
-${analytics.difficultyDistribution
-  .map(d => `${d.difficulty}: ${d.count} problems`)
-  .join('\n')}
+      // 1. Overview Sheet
+      const overviewData = [
+        ['Coding Lab - Analytics Report'],
+        ['Generated:', new Date().toLocaleString('en-IN')],
+        [],
+        ['Metric', 'Value'],
+        ['Total Problems', analytics.totalProblems],
+        ['Total Submissions', analytics.totalSubmissions],
+        ['Active Students', analytics.totalStudents],
+        ['Average Acceptance Rate', `${analytics.averageAcceptanceRate}%`],
+      ]
 
-=== LANGUAGE POPULARITY ===
-${analytics.languagePopularity
-  .map(l => `${l.language}: ${l.count} submissions`)
-  .join('\n')}
-`
+      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData)
+      overviewSheet['!cols'] = [{ wch: 25 }, { wch: 20 }]
+      XLSX.utils.book_append_sheet(wb, overviewSheet, 'Overview')
 
-    const element = document.createElement('a')
-    element.setAttribute(
-      'href',
-      'data:text/plain;charset=utf-8,' + encodeURIComponent(reportContent)
-    )
-    element.setAttribute('download', `coding-analytics-${new Date().getTime()}.txt`)
-    element.style.display = 'none'
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+      // 2. Problem Performance Sheet
+      const problemPerfData = [
+        ['Problem Performance Report'],
+        [],
+        ['Problem Title', 'Total Submissions', 'Acceptance Rate (%)'],
+        ...analytics.problemPerformance.map(p => [
+          p.title,
+          p.submissions,
+          p.acceptanceRate,
+        ]),
+      ]
+
+      const problemPerfSheet = XLSX.utils.aoa_to_sheet(problemPerfData)
+      problemPerfSheet['!cols'] = [{ wch: 40 }, { wch: 18 }, { wch: 20 }]
+      XLSX.utils.book_append_sheet(wb, problemPerfSheet, 'Problem Performance')
+
+      // 3. Difficulty Distribution Sheet
+      const difficultyData = [
+        ['Difficulty Distribution'],
+        [],
+        ['Difficulty Level', 'Number of Problems'],
+        ...analytics.difficultyDistribution.map(d => [
+          d.difficulty.toUpperCase(),
+          d.count,
+        ]),
+      ]
+
+      const difficultySheet = XLSX.utils.aoa_to_sheet(difficultyData)
+      difficultySheet['!cols'] = [{ wch: 20 }, { wch: 20 }]
+      XLSX.utils.book_append_sheet(wb, difficultySheet, 'Difficulty')
+
+      // 4. Language Popularity Sheet
+      const languageData = [
+        ['Language Popularity (By Submissions)'],
+        [],
+        ['Programming Language', 'Number of Submissions'],
+        ...analytics.languagePopularity.map(l => [
+          l.language.toUpperCase(),
+          l.count,
+        ]),
+      ]
+
+      const languageSheet = XLSX.utils.aoa_to_sheet(languageData)
+      languageSheet['!cols'] = [{ wch: 25 }, { wch: 25 }]
+      XLSX.utils.book_append_sheet(wb, languageSheet, 'Languages')
+
+      // Generate filename with date
+      const dateStr = new Date().toISOString().split('T')[0]
+      const filename = `Coding-Lab-Analytics-${dateStr}.xlsx`
+
+      // Save file
+      XLSX.writeFile(wb, filename)
+
+      toast.success(`Excel report "${filename}" downloaded successfully!`, {
+        position: 'top-right',
+        autoClose: 4000,
+      })
+    } catch (error) {
+      console.error('Error exporting Excel:', error)
+      toast.error('Failed to export Excel report', {
+        position: 'top-right',
+        autoClose: 4000,
+      })
+    } finally {
+      setIsExporting(false)
+    }
   }
+
 
   if (loading) {
     return (
@@ -197,6 +272,7 @@ ${analytics.languagePopularity
       </div>
     )
   }
+
 
   return (
     <div className="w-full min-h-screen bg-gray-50">
@@ -217,14 +293,25 @@ ${analytics.languagePopularity
             </div>
           </div>
           <button
-            onClick={exportReport}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
+            onClick={exportToExcel}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-5 h-5" />
-            Export Report
+            {isExporting ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                Export Excel
+              </>
+            )}
           </button>
         </div>
       </div>
+
 
       {/* Main Content - Full Width */}
       <div className="max-w-7xl mx-auto px-8 py-8">
@@ -243,6 +330,7 @@ ${analytics.languagePopularity
             </div>
           </div>
 
+
           {/* Total Submissions */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -255,6 +343,7 @@ ${analytics.languagePopularity
               </div>
             </div>
           </div>
+
 
           {/* Total Students */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
@@ -269,6 +358,7 @@ ${analytics.languagePopularity
             </div>
           </div>
 
+
           {/* Acceptance Rate */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -282,6 +372,7 @@ ${analytics.languagePopularity
             </div>
           </div>
         </div>
+
 
         {/* Problem Performance */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
@@ -319,6 +410,7 @@ ${analytics.languagePopularity
             </table>
           </div>
         </div>
+
 
         {/* Difficulty & Language */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -359,6 +451,7 @@ ${analytics.languagePopularity
             </div>
           </div>
 
+
           {/* Language Popularity */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-6">Language Popularity</h3>
@@ -394,5 +487,6 @@ ${analytics.languagePopularity
     </div>
   )
 }
+
 
 export default AdminCodingAnalytics

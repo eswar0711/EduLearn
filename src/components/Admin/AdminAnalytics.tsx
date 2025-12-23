@@ -3,10 +3,14 @@ import { supabase } from '../../utils/supabaseClient';
 import type { User } from '../../utils/supabaseClient';
 import NavigationSidebar from '../NavigationSidebar';
 import { BarChart3, Users, BookOpen, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { toast } from 'react-toastify';
+
 
 interface AdminAnalyticsProps {
   user: User;
 }
+
 
 interface AnalyticsData {
   subjectPerformance: { subject: string; avgScore: number; submissionCount: number }[];
@@ -14,6 +18,7 @@ interface AnalyticsData {
   monthlySubmissions: { month: string; count: number }[];
   assessmentDifficulty: { title: string; avgScore: number; submissionCount: number }[];
 }
+
 
 const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
   const [analytics, setAnalytics] = useState<AnalyticsData>({
@@ -23,14 +28,18 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
     assessmentDifficulty: []
   });
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
 
   useEffect(() => {
     fetchAnalyticsData();
   }, []);
 
+
   const fetchAnalyticsData = async () => {
     try {
       console.log('📊 Fetching analytics...');
+
 
       // Subject Performance
       const { data: submissionsData } = await supabase
@@ -39,6 +48,7 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
           total_score,
           assessment:assessments(subject)
         `);
+
 
       const subjectMap = new Map<string, { scores: number[]; count: number }>();
       submissionsData?.forEach((s: any) => {
@@ -51,26 +61,31 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
         data.count++;
       });
 
+
       const subjectPerformance = Array.from(subjectMap.entries()).map(([subject, data]) => ({
         subject,
         avgScore: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length * 10) / 10,
         submissionCount: data.count
       }));
 
+
       // Role Distribution
       const { data: usersData } = await supabase
         .from('user_profiles')
         .select('role', { count: 'exact' });
+
 
       const roleMap = new Map<string, number>();
       usersData?.forEach((u: any) => {
         roleMap.set(u.role, (roleMap.get(u.role) || 0) + 1);
       });
 
+
       const roleDistribution = Array.from(roleMap.entries()).map(([role, count]) => ({
         role,
         count
       }));
+
 
       // Assessment Difficulty (Top performers vs Bottom performers)
       const { data: assessmentData } = await supabase
@@ -79,6 +94,7 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
           total_score,
           assessment:assessments(id, title)
         `);
+
 
       const assessmentMap = new Map<string, { title: string; scores: number[]; count: number }>();
       assessmentData?.forEach((s: any) => {
@@ -92,6 +108,7 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
         data.count++;
       });
 
+
       const assessmentDifficulty = Array.from(assessmentMap.values())
         .map(data => ({
           title: data.title,
@@ -100,12 +117,14 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
         }))
         .sort((a, b) => a.avgScore - b.avgScore);
 
+
       setAnalytics({
         subjectPerformance,
         roleDistribution,
         monthlySubmissions: [], // Could implement if tracking dates
         assessmentDifficulty
       });
+
 
       console.log('✓ Analytics loaded');
     } catch (error) {
@@ -115,35 +134,100 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
     }
   };
 
-  const exportReport = () => {
-    const reportContent = `
-EduVerge - Analytics Report
-Generated: ${new Date().toLocaleString()}
 
-=== SUBJECT PERFORMANCE ===
-${analytics.subjectPerformance.map(s => 
-  `${s.subject}: ${s.avgScore}% avg (${s.submissionCount} submissions)`
-).join('\n')}
+  const exportToExcel = async () => {
+    setIsExporting(true);
 
-=== ROLE DISTRIBUTION ===
-${analytics.roleDistribution.map(r => 
-  `${r.role}: ${r.count} users`
-).join('\n')}
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
 
-=== ASSESSMENT DIFFICULTY ===
-${analytics.assessmentDifficulty.map(a => 
-  `${a.title}: ${a.avgScore}% avg (${a.submissionCount} submissions)`
-).join('\n')}
-    `;
+      // 1. Overview Sheet
+      const overviewData = [
+        ['EduVerge - Analytics Report'],
+        ['Generated:', new Date().toLocaleString('en-IN')],
+        [],
+        ['Metric', 'Value'],
+        ['Total Subjects', analytics.subjectPerformance.length],
+        ['Total Users', analytics.roleDistribution.reduce((sum, r) => sum + r.count, 0)],
+        ['Total Assessments', analytics.assessmentDifficulty.length],
+        ['Total Submissions', analytics.assessmentDifficulty.reduce((sum, a) => sum + a.submissionCount, 0)],
+      ];
 
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(reportContent));
-    element.setAttribute('download', `analytics-report-${new Date().getTime()}.txt`);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
+      overviewSheet['!cols'] = [{ wch: 25 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, overviewSheet, 'Overview');
+
+      // 2. Subject Performance Sheet
+      const subjectData = [
+        ['Subject Performance Report'],
+        [],
+        ['Subject', 'Average Score (%)', 'Total Submissions'],
+        ...analytics.subjectPerformance.map(s => [
+          s.subject,
+          s.avgScore,
+          s.submissionCount,
+        ]),
+      ];
+
+      const subjectSheet = XLSX.utils.aoa_to_sheet(subjectData);
+      subjectSheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, subjectSheet, 'Subject Performance');
+
+      // 3. Assessment Performance Sheet
+      const assessmentData = [
+        ['Assessment Performance Report (Ranked by Difficulty)'],
+        [],
+        ['Rank', 'Assessment Title', 'Average Score (%)', 'Number of Students'],
+        ...analytics.assessmentDifficulty.map((a, idx) => [
+          idx + 1,
+          a.title,
+          a.avgScore,
+          a.submissionCount,
+        ]),
+      ];
+
+      const assessmentSheet = XLSX.utils.aoa_to_sheet(assessmentData);
+      assessmentSheet['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 20 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, assessmentSheet, 'Assessment Performance');
+
+      // 4. Role Distribution Sheet
+      const roleData = [
+        ['User Distribution Report'],
+        [],
+        ['Role', 'Number of Users'],
+        ...analytics.roleDistribution.map(r => [
+          r.role.charAt(0).toUpperCase() + r.role.slice(1),
+          r.count,
+        ]),
+      ];
+
+      const roleSheet = XLSX.utils.aoa_to_sheet(roleData);
+      roleSheet['!cols'] = [{ wch: 20 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, roleSheet, 'User Distribution');
+
+      // Generate filename with date
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `EduVerge-Analytics-${dateStr}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Excel report "${filename}" downloaded successfully!`, {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast.error('Failed to export Excel report', {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
+
 
   if (loading) {
     return (
@@ -156,9 +240,11 @@ ${analytics.assessmentDifficulty.map(a =>
     );
   }
 
+
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <NavigationSidebar user={user} />
+
 
       <div className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
@@ -167,13 +253,24 @@ ${analytics.assessmentDifficulty.map(a =>
             <p className="text-gray-600">System-wide performance metrics</p>
           </div>
           <button
-            onClick={exportReport}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            onClick={exportToExcel}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" />
-            Export Report
+            {isExporting ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Export Excel
+              </>
+            )}
           </button>
         </div>
+
 
         {/* Subject Performance */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
@@ -202,6 +299,7 @@ ${analytics.assessmentDifficulty.map(a =>
           </div>
         </div>
 
+
         {/* Assessment Difficulty */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -224,6 +322,7 @@ ${analytics.assessmentDifficulty.map(a =>
           </div>
         </div>
 
+
         {/* Role Distribution */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -243,5 +342,6 @@ ${analytics.assessmentDifficulty.map(a =>
     </div>
   );
 };
+
 
 export default AdminAnalytics;
