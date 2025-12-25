@@ -2,19 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getCurrentUser } from './utils/auth';
 import type { AuthUser } from './utils/auth';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
 
 // Pages
 import LoginPage from './pages/LoginPage';
-
 
 // Components - Faculty
 import FacultyDashboard from './components/FacultyDashboard';
 import AssessmentCreation from './components/AssessmentCreation';
 import FacultyCourseMaterials from './components/FacultyCourseMaterials';
-
 
 // Components - Student
 import StudentDashboard from './components/StudentDashboard';
@@ -24,10 +19,11 @@ import CoursePage from './components/CoursePage';
 import ScoreCalculatorModule from './components/ScoreCalculator/ScoreCalculatorModule';
 import AIAssistantModule from './components/AIAssistant/AIAssistantModule';
 
-
 // Components - User Settings
-import { ChangePassword, UserProfile as UserProfileComponent } from './components/UserSettings';
-
+import {
+  ChangePassword,
+  UserProfile as UserProfileComponent,
+} from './components/UserSettings';
 
 // Components - Admin
 import AdminDashboard from './components/Admin/AdminDashboardd';
@@ -35,13 +31,15 @@ import AdminUserManagement from './components/Admin/AdminUserManagement';
 import AdminAnalytics from './components/Admin/AdminAnalytics';
 import AdminSubmissions from './components/Admin/AdminSubmissions';
 
-
-// ===== NEW: Coding Practice Lab Components =====
+// Coding Practice Lab
 import StudentCodingLabPage from './pages/CodingPractice/StudentCodingLabPage';
 import FacultyCodingManagement from './pages/CodingPractice/FacultyCodingManagement';
 import AdminCodingAnalytics from './pages/CodingPractice/AdminCodingAnalytics';
 import SubmissionView from './pages/CodingPractice/SubmissionView';
 
+// Test Results Pages
+import ResultsSummary from './components/ResultsSummary';
+import SessionLockGuard from './components/SessionLockGuard';
 
 // Type conversion utility
 const convertAuthUserToComponentUser = (authUser: AuthUser): any => {
@@ -52,21 +50,17 @@ const convertAuthUserToComponentUser = (authUser: AuthUser): any => {
     role: authUser.role,
     is_blocked: authUser.is_blocked,
     is_active: authUser.is_active,
-    created_at: authUser.created_at
+    created_at: authUser.created_at,
   };
 };
-
-
 
 const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-
   useEffect(() => {
     checkUser();
   }, []);
-
 
   const checkUser = async () => {
     try {
@@ -80,43 +74,26 @@ const App: React.FC = () => {
     }
   };
 
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }
 
-
   const componentUser = user ? convertAuthUserToComponentUser(user) : null;
-
 
   return (
     <Router>
-      {/* Toast Container - Global for entire app */}
-      <ToastContainer 
-        position="top-right" 
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-
       <Routes>
-        {/* ===== LOGIN ROUTE ===== */}
+        {/* ===== LOGIN ===== */}
         <Route
           path="/login"
           element={!user ? <LoginPage onLogin={checkUser} /> : <Navigate to="/" />}
         />
 
-
-        {/* ===== ADMIN ROUTES ===== */}
+        {/* ===== ADMIN ===== */}
         <Route
           path="/admin"
           element={
@@ -157,36 +134,6 @@ const App: React.FC = () => {
             )
           }
         />
-
-
-        {/* ===== CODING PRACTICE LAB ROUTES (NEW) ===== */}
-        {/* Student - View and solve problems */}
-        <Route
-          path="/coding-lab"
-          element={
-            user && user.role === 'student' ? (
-              <StudentCodingLabPage user={componentUser} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-
-        {/* Faculty - Manage coding problems */}
-        <Route
-          path="/coding-management"
-          element={
-            user && user.role === 'faculty' ? (
-              <FacultyCodingManagement user={componentUser} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-
-        {/* Admin - Coding analytics */}
         <Route
           path="/admin/coding-analytics"
           element={
@@ -198,21 +145,33 @@ const App: React.FC = () => {
           }
         />
 
-
-        {/* View submission details - accessible to student (own) and admin/faculty */}
+        {/* ===== CODING PRACTICE LAB ===== */}
         <Route
-          path="/submission/:id"
+          path="/coding-lab"
           element={
-            user ? (
-              <SubmissionView />
+            user && user.role === 'student' ? (
+              <StudentCodingLabPage user={componentUser} />
             ) : (
               <Navigate to="/login" />
             )
           }
         />
+        <Route
+          path="/coding-management"
+          element={
+            user && user.role === 'faculty' ? (
+              <FacultyCodingManagement user={componentUser} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/submission/:id"
+          element={user ? <SubmissionView /> : <Navigate to="/login" />}
+        />
 
-
-        {/* ===== MAIN DASHBOARD ROUTE ===== */}
+        {/* ===== MAIN DASHBOARD ===== */}
         <Route
           path="/"
           element={
@@ -230,8 +189,7 @@ const App: React.FC = () => {
           }
         />
 
-
-        {/* ===== FACULTY ROUTES ===== */}
+        {/* ===== FACULTY ===== */}
         <Route
           path="/create-assessment"
           element={
@@ -253,18 +211,21 @@ const App: React.FC = () => {
           }
         />
 
-
-        {/* ===== STUDENT ROUTES ===== */}
+        {/* ===== STUDENT ===== */}
+        {/* 🔒 TEST TAKING - PROTECTED WITH SESSION LOCK GUARD */}
         <Route
           path="/take-test/:assessmentId"
           element={
             user && user.role === 'student' ? (
-              <TestTaking user={componentUser} />
+              <SessionLockGuard>
+                <TestTaking user={componentUser} />
+              </SessionLockGuard>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
+
         <Route
           path="/courses"
           element={
@@ -296,46 +257,38 @@ const App: React.FC = () => {
           }
         />
 
-
-        {/* ===== COMMON ROUTES ===== */}
+        {/* ===== RESULTS PAGES ===== */}
+        {/* 📊 DETAILED RESULTS - Accessible from Dashboard after submission */}
         <Route
           path="/results/:submissionId"
           element={
-            user ? (
-              <ResultsPage user={componentUser} />
-            ) : (
-              <Navigate to="/login" />
-            )
+            user ? <ResultsPage user={componentUser} /> : <Navigate to="/login" />
           }
         />
+
+        {/* ✨ SUMMARY RESULTS - Shown immediately after submission (PASS/FAIL only) */}
+        <Route
+          path="/results-summary/:submissionId"
+          element={
+            user ? <ResultsSummary user={componentUser} /> : <Navigate to="/login" />
+          }
+        />
+
+        {/* ===== USER SETTINGS ===== */}
         <Route
           path="/profile"
-          element={
-            user ? (
-              <UserProfileComponent />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
+          element={user ? <UserProfileComponent /> : <Navigate to="/login" />}
         />
         <Route
           path="/change-password"
-          element={
-            user ? (
-              <ChangePassword />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
+          element={user ? <ChangePassword /> : <Navigate to="/login" />}
         />
 
-
-        {/* ===== CATCH-ALL ROUTE ===== */}
+        {/* ===== CATCH-ALL ===== */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );
 };
-
 
 export default App;

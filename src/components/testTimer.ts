@@ -1,92 +1,70 @@
-// src/utils/testTimer.ts
 import { supabase } from '../utils/supabaseClient';
 
 export interface TestSession {
   id: string;
   assessment_id: string;
   student_id: string;
-  started_at: string; // ISO timestamp
+  started_at: string;
   duration_minutes: number;
-  submitted_at: string | null;
-  is_completed: boolean;
-  created_at: string;
+  is_locked: boolean;
+  submission_id: string | null;
 }
 
 /**
- * Get existing test session or create a new one
- * ✅ Always checks database first
+ * Get or create a test session for a student
  */
 export const getOrCreateTestSession = async (
   assessmentId: string,
-  durationMinutes: number,
-  studentId?: string
+  durationMinutes: number
 ): Promise<TestSession> => {
-  try {
-    // ✅ FIX: Get current user first
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const userId = (await supabase.auth.getUser()).data.user?.id;
 
-    if (authError || !user) {
-      throw new Error('Not authenticated');
-    }
-
-    const userId = studentId || user.id;
-
-    // ✅ FIX: Always check for existing session in database
-    const { data: existingSession, } = await supabase
-      .from('test_sessions')
-      .select('*')
-      .eq('assessment_id', assessmentId)
-      .eq('student_id', userId)
-      .eq('is_completed', false)
-      .single();
-
-    if (existingSession) {
-      console.log('✅ Found existing test session:', existingSession.id);
-      return existingSession;
-    }
-
-    // ✅ No existing session, create new one
-    console.log('📝 Creating new test session...');
-    const { data: newSession, error: createError } = await supabase
-      .from('test_sessions')
-      .insert({
-        assessment_id: assessmentId,
-        student_id: userId,
-        duration_minutes: durationMinutes,
-        started_at: new Date().toISOString(),
-        is_completed: false,
-      })
-      .select()
-      .single();
-
-    if (createError || !newSession) {
-      console.error('Create error:', createError);
-      throw new Error('Failed to create test session');
-    }
-
-    console.log('✅ New test session created:', newSession.id);
-    return newSession;
-  } catch (error: any) {
-    console.error('Error in getOrCreateTestSession:', error);
-    throw error;
+  if (!userId) {
+    throw new Error('User not authenticated');
   }
+
+  // Check if session already exists
+  const { data: existingSession } = await supabase
+    .from('test_sessions')
+    .select('*')
+    .eq('assessment_id', assessmentId)
+    .eq('student_id', userId)
+    .single();
+
+  if (existingSession && !existingSession.is_locked) {
+    return existingSession;
+  }
+
+  // Create new session
+  const { data: newSession, error } = await supabase
+    .from('test_sessions')
+    .insert({
+      assessment_id: assessmentId,
+      student_id: userId,
+      started_at: new Date().toISOString(),
+      duration_minutes: durationMinutes,
+      is_locked: false,
+    })
+    .select()
+    .single();
+
+  if (error || !newSession) {
+    throw new Error(`Failed to create test session: ${error?.message}`);
+  }
+
+  return newSession;
 };
 
 /**
- * Calculate remaining time based on server-side started_at
- * ✅ Always uses database time, not local state
+ * Calculate remaining time for a test session
  */
 export const calculateRemainingTime = (session: TestSession): number => {
   const startTime = new Date(session.started_at).getTime();
-  const nowTime = new Date().getTime();
-  const elapsedSeconds = Math.floor((nowTime - startTime) / 1000);
-  const totalSeconds = session.duration_minutes * 60;
-  const remaining = Math.max(0, totalSeconds - elapsedSeconds);
+  const durationMs = session.duration_minutes * 60 * 1000;
+  const elapsedMs = Date.now() - startTime;
+  const remainingMs = durationMs - elapsedMs;
 
-  return remaining;
+  return Math.max(0, Math.floor(remainingMs / 1000));
 };
 
 /**
@@ -95,34 +73,127 @@ export const calculateRemainingTime = (session: TestSession): number => {
 export const completeTestSession = async (sessionId: string): Promise<void> => {
   const { error } = await supabase
     .from('test_sessions')
+    .update({ completed_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  if (error) {
+    throw new Error(`Failed to complete test session: ${error.message}`);
+  }
+};
+
+/**
+ * 🔒 LOCK TEST SESSION - Prevents re-access to test
+ * This is called immediately after submission
+ */
+export const lockTestSession = async (
+  sessionId: string,
+  submissionId: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('test_sessions')
     .update({
-      is_completed: true,
-      submitted_at: new Date().toISOString(),
+      is_locked: true,
+      submission_id: submissionId,
+      locked_at: new Date().toISOString(),
     })
     .eq('id', sessionId);
 
   if (error) {
-    console.error('Error completing session:', error);
-    throw error;
+    console.error('❌ Failed to lock test session:', error);
+    throw new Error(`Failed to lock test session: ${error.message}`);
   }
 
-  console.log('✅ Test session marked as completed');
+  console.log('🔒 Test session locked:', sessionId);
 };
 
 /**
- * Get test session by ID
+ * Load draft answers for a test session
  */
-export const getTestSessionById = async (sessionId: string): Promise<TestSession | null> => {
+export const loadDraftAnswers = async (
+  sessionId: string
+): Promise<Record<string, string>> => {
   const { data, error } = await supabase
+    .from('test_draft_answers')
+    .select('answers')
+    .eq('session_id', sessionId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    return {};
+  }
+
+  return data.answers || {};
+};
+
+/**
+ * Save draft answers for a test session
+ */
+export const saveDraftAnswers = async (
+  sessionId: string,
+  answers: Record<string, string>
+): Promise<void> => {
+  // Check if draft exists
+  const { data: existingDraft } = await supabase
+    .from('test_draft_answers')
+    .select('id')
+    .eq('session_id', sessionId)
+    .single();
+
+  if (existingDraft) {
+    // Update existing draft
+    const { error } = await supabase
+      .from('test_draft_answers')
+      .update({
+        answers: answers,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('session_id', sessionId);
+
+    if (error) {
+      console.error('❌ Failed to update draft answers:', error);
+    }
+  } else {
+    // Create new draft
+    const { error } = await supabase
+      .from('test_draft_answers')
+      .insert({
+        session_id: sessionId,
+        answers: answers,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('❌ Failed to save draft answers:', error);
+    }
+  }
+};
+
+/**
+ * Delete draft answers when test is submitted
+ */
+export const deleteDraftAnswers = async (sessionId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('test_draft_answers')
+    .delete()
+    .eq('session_id', sessionId);
+
+  if (error) {
+    console.error('❌ Failed to delete draft answers:', error);
+  }
+};
+
+/**
+ * Check if a test session is locked
+ */
+export const isTestSessionLocked = async (sessionId: string): Promise<boolean> => {
+  const { data } = await supabase
     .from('test_sessions')
-    .select('*')
+    .select('is_locked')
     .eq('id', sessionId)
     .single();
 
-  if (error) {
-    console.error('Error fetching session:', error);
-    return null;
-  }
-
-  return data;
+  return data?.is_locked ?? false;
 };

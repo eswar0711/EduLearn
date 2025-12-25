@@ -9,6 +9,12 @@ export interface TestSession {
   submitted_at: string | null;
   is_completed: boolean;
   created_at: string;
+
+  // NEW: optional lock fields (present after DB migration)
+  is_locked?: boolean;
+  locked_at?: string | null;
+  completed_at?: string | null;
+  submission_id?: string | null;
 }
 
 export interface TestDraft {
@@ -46,6 +52,8 @@ export const getOrCreateTestSession = async (
       .eq('assessment_id', assessmentId)
       .eq('student_id', userId)
       .eq('is_completed', false)
+      // also ensure not locked, if column exists
+      .or('is_locked.is.null,is_locked.eq.false')
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -58,11 +66,11 @@ export const getOrCreateTestSession = async (
     if (existingSession) {
       console.log('✅ Found existing session:', existingSession.id);
       console.log(`⏱️ Started at: ${existingSession.started_at}`);
-      return existingSession;
+      return existingSession as TestSession;
     }
 
     console.log('📝 No existing session found, creating new one...');
-    
+
     const { data: newSession, error: createError } = await supabase
       .from('test_sessions')
       .insert({
@@ -71,6 +79,8 @@ export const getOrCreateTestSession = async (
         duration_minutes: durationMinutes,
         started_at: new Date().toISOString(),
         is_completed: false,
+        // lock fields default to unlocked
+        is_locked: false,
       })
       .select()
       .single();
@@ -81,7 +91,7 @@ export const getOrCreateTestSession = async (
     }
 
     console.log('✅ New test session created:', newSession.id);
-    return newSession;
+    return newSession as TestSession;
   } catch (error: any) {
     console.error('❌ Error in getOrCreateTestSession:', error);
     throw error;
@@ -91,7 +101,9 @@ export const getOrCreateTestSession = async (
 /**
  * Load draft answers for a test session
  */
-export const loadDraftAnswers = async (sessionId: string): Promise<Record<string, string>> => {
+export const loadDraftAnswers = async (
+  sessionId: string
+): Promise<Record<string, string>> => {
   try {
     console.log('📥 Loading draft answers...');
 
@@ -107,8 +119,12 @@ export const loadDraftAnswers = async (sessionId: string): Promise<Record<string
     }
 
     if (draft?.answers) {
-      console.log('✅ Draft answers loaded:', Object.keys(draft.answers).length, 'answers');
-      return draft.answers;
+      console.log(
+        '✅ Draft answers loaded:',
+        Object.keys(draft.answers).length,
+        'answers'
+      );
+      return draft.answers as Record<string, string>;
     }
 
     console.log('📝 No draft found, starting fresh');
@@ -152,7 +168,9 @@ export const saveDraftAnswers = async (
 /**
  * Delete draft answers (after successful submission)
  */
-export const deleteDraftAnswers = async (sessionId: string): Promise<void> => {
+export const deleteDraftAnswers = async (
+  sessionId: string
+): Promise<void> => {
   try {
     const { error } = await supabase
       .from('test_drafts')
@@ -192,7 +210,9 @@ export const calculateRemainingTime = (session: TestSession): number => {
 /**
  * Mark test session as completed
  */
-export const completeTestSession = async (sessionId: string): Promise<void> => {
+export const completeTestSession = async (
+  sessionId: string
+): Promise<void> => {
   const { error } = await supabase
     .from('test_sessions')
     .update({
@@ -210,9 +230,37 @@ export const completeTestSession = async (sessionId: string): Promise<void> => {
 };
 
 /**
+ * 🔒 Lock test session immediately after submission
+ * (exported to fix the `lockTestSession` import error)
+ */
+export const lockTestSession = async (
+  sessionId: string,
+  submissionId: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('test_sessions')
+    .update({
+      is_locked: true,
+      submission_id: submissionId,
+      locked_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  if (error) {
+    console.error('❌ Error locking session:', error);
+    throw error;
+  }
+
+  console.log('🔒 Test session locked:', sessionId);
+};
+
+/**
  * Get test session by ID
  */
-export const getTestSessionById = async (sessionId: string): Promise<TestSession | null> => {
+export const getTestSessionById = async (
+  sessionId: string
+): Promise<TestSession | null> => {
   try {
     const { data, error } = await supabase
       .from('test_sessions')
@@ -225,7 +273,7 @@ export const getTestSessionById = async (sessionId: string): Promise<TestSession
       return null;
     }
 
-    return data;
+    return data as TestSession;
   } catch (error) {
     console.error('❌ Fetch error:', error);
     return null;

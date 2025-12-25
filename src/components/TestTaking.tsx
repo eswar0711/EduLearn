@@ -9,6 +9,7 @@ import {
   getOrCreateTestSession,
   calculateRemainingTime,
   completeTestSession,
+  lockTestSession,
   loadDraftAnswers,
   saveDraftAnswers,
   deleteDraftAnswers,
@@ -18,16 +19,13 @@ import { Clock, Send, AlertCircle } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
 interface TestTakingProps {
   user: User;
 }
 
-
 const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const navigate = useNavigate();
-
 
   const [assessment, setAssessment] = useState<any>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -40,7 +38,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-
   useEffect(() => {
     if (!assessmentId) {
       setError('Assessment ID is missing');
@@ -48,19 +45,16 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       return;
     }
 
-
     const initializeTest = async () => {
       try {
         setLoading(true);
         console.log('🔄 Initializing test...');
-
 
         const { data: assessmentData, error: assessmentError } = await supabase
           .from('assessments')
           .select('*')
           .eq('id', assessmentId)
           .single();
-
 
         if (assessmentError || !assessmentData) {
           console.error('❌ Assessment error:', assessmentError);
@@ -73,16 +67,13 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
           return;
         }
 
-
         setAssessment(assessmentData);
-
 
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
           .eq('assessment_id', assessmentId)
           .order('question_number', { ascending: true });
-
 
         if (questionsError) {
           console.error('❌ Questions error:', questionsError);
@@ -95,25 +86,20 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
           return;
         }
 
-
         setQuestions(questionsData || []);
-
 
         const session = await getOrCreateTestSession(
           assessmentId,
           assessmentData.duration_minutes
         );
-        
-        setTestSession(session);
 
+        setTestSession(session);
 
         const draftAnswers = await loadDraftAnswers(session.id);
         setAnswers(draftAnswers);
 
-
         const remaining = calculateRemainingTime(session);
         setTimeLeft(remaining);
-
 
         if (remaining <= 0) {
           setIsTimeExpired(true);
@@ -122,7 +108,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
             autoClose: 5000,
           });
         }
-
 
         setLoading(false);
       } catch (error: any) {
@@ -136,18 +121,14 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       }
     };
 
-
     initializeTest();
   }, [assessmentId]);
-
 
   useEffect(() => {
     if (!testSession || isTimeExpired || submitting) return;
 
-
     const timer = setInterval(() => {
       const remaining = calculateRemainingTime(testSession);
-
 
       if (remaining <= 0) {
         console.warn('⏱️ Time expired!');
@@ -160,67 +141,53 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       }
     }, 1000);
 
-
     return () => clearInterval(timer);
   }, [testSession, isTimeExpired, submitting]);
-
 
   useEffect(() => {
     if (!testSession || submitting || Object.keys(answers).length === 0) return;
 
-
     console.log('💾 Auto-saving answers...');
     saveDraftAnswers(testSession.id, answers);
-
 
     const saveInterval = setInterval(() => {
       console.log('💾 Auto-saving answers...');
       saveDraftAnswers(testSession.id, answers);
     }, 5000);
 
-
     return () => clearInterval(saveInterval);
   }, [testSession, answers, submitting]);
-
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     console.log(`✏️ Answer changed for Q${questionId}: ${answer}`);
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-
   const handleAutoSubmit = async () => {
     if (!testSession) return;
     await submitTest(true);
   };
-
 
   const handleSubmit = async () => {
     if (submitting) return;
     setShowConfirmModal(true);
   };
 
-
   const handleConfirmSubmit = async () => {
     await submitTest(false);
   };
 
-
   const submitTest = async (isAutoSubmit: boolean) => {
     if (!testSession) return;
 
-
     setSubmitting(true);
-
 
     try {
       await completeTestSession(testSession.id);
 
-
       const mcqScore = autoGradeMCQ(questions, answers);
       const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
       const percentageScore = totalMarks > 0 ? Math.round((mcqScore / totalMarks) * 100) : 0;
-
 
       const { data: submission, error: submitError } = await supabase
         .from('submissions')
@@ -238,53 +205,47 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
         .select()
         .single();
 
-
       if (submitError) throw submitError;
 
+      // 🔒 LOCK THE TEST SESSION IMMEDIATELY AFTER SUBMISSION
+      await lockTestSession(testSession.id, submission.id);
 
       await deleteDraftAnswers(testSession.id);
 
+      console.log('✅ Test submitted and session locked');
 
-      console.log('✅ Test submitted');
-      
-      // Show success toast
+      // Show success toast and redirect to results summary (not detailed results)
       toast.success(
-        isAutoSubmit 
-          ? '✅ Test auto-submitted successfully!' 
+        isAutoSubmit
+          ? '✅ Test auto-submitted successfully!'
           : '✅ Test submitted successfully!',
         {
           position: 'top-right',
           autoClose: 2000,
-          onClose: () => navigate(`/results/${submission.id}`),
+          onClose: () => navigate(`/results-summary/${submission.id}`),
         }
       );
-      
+
       setShowConfirmModal(false);
     } catch (error: any) {
       console.error('❌ Submit error:', error);
       setError('Error submitting: ' + error.message);
-      
-      // Show error toast
-      toast.error(
-        'Error submitting test. Please try again.',
-        {
-          position: 'top-right',
-          autoClose: 5000,
-        }
-      );
-      
+
+      toast.error('Error submitting test. Please try again.', {
+        position: 'top-right',
+        autoClose: 5000,
+      });
+
       setShowConfirmModal(false);
     } finally {
       setSubmitting(false);
     }
   };
 
-
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
 
     if (hours > 0) {
       return `${hours}h ${mins}m ${secs.toString().padStart(2, '0')}s`;
@@ -292,20 +253,17 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     return `${mins}m ${secs.toString().padStart(2, '0')}s`;
   };
 
-
   const getTimeColor = (): string => {
     if (timeLeft <= 300) return 'text-red-600';
     if (timeLeft <= 600) return 'text-yellow-600';
     return 'text-green-600';
   };
 
-
   const getTimeBgColor = (): string => {
     if (timeLeft <= 300) return 'bg-red-50';
     if (timeLeft <= 600) return 'bg-yellow-50';
     return 'bg-green-50';
   };
-
 
   if (loading) {
     return (
@@ -317,7 +275,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       </div>
     );
   }
-
 
   if (error) {
     return (
@@ -341,7 +298,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     );
   }
 
-
   if (!assessment || !testSession) {
     return (
       <div className="flex">
@@ -353,7 +309,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     );
   }
 
-
   if (isTimeExpired) {
     return (
       <div className="flex">
@@ -362,9 +317,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
           <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
             <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-red-600 mb-2">⏱️ Time Expired</h2>
-            <p className="text-gray-600 mb-6">
-              Your test has been auto-submitted.
-            </p>
+            <p className="text-gray-600 mb-6">Your test has been auto-submitted.</p>
             <button
               onClick={() => navigate('/')}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -377,7 +330,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       </div>
     );
   }
-
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
@@ -395,7 +347,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
                   {assessment.subject} - Unit {assessment.unit}
                 </p>
               </div>
-
 
               <div
                 className={`text-right px-6 py-4 rounded-lg border-2 ${getTimeBgColor()} ${
@@ -415,12 +366,10 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
               </div>
             </div>
 
-
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               🔒 Your answers are auto-saved every 5 seconds. Refreshing will NOT lose your answers.
             </div>
           </div>
-
 
           <div className="space-y-6 mb-6">
             {questions.map((question, index) => (
@@ -440,9 +389,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
                   </span>
                 </div>
 
-
                 <p className="text-gray-700 mb-4">{question.question_text}</p>
-
 
                 {question.type === 'MCQ' && question.options ? (
                   <div className="space-y-2">
@@ -480,7 +427,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
             ))}
           </div>
 
-
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <p className="text-gray-600">
@@ -499,7 +445,6 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         title="Submit Test?"
@@ -525,6 +470,5 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     </div>
   );
 };
-
 
 export default TestTaking;
