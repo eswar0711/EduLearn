@@ -14,6 +14,10 @@ export interface CodingQuestion {
   programming_language: string
   sample_input: string
   sample_output: string
+  sample_input2: string
+
+  
+  sample_output2: string
   time_limit: number
   memory_limit: number
   is_published: boolean
