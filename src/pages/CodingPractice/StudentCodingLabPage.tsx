@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { executeAndSaveCode, CodingQuestion, CodingSubmission, ExecutionResult } from '../../utils/codingLabService'
 import CodeEditor from './CodeEditor'
-
+import SubmissionDetailModal from './SubmissionDetailModal'
 
 interface StudentCodingLabPageProps {
   user: any
 }
-
 
 const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => {
   const navigate = useNavigate()
@@ -23,12 +22,15 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
   const [filterLanguage, setFilterLanguage] = useState<string>('all')
   const [lastRunResult, setLastRunResult] = useState<ExecutionResult | null>(null)
 
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedSubmission, setSelectedSubmission] = useState<CodingSubmission | null>(null)
+  const [isLoadingSubmission, setIsLoadingSubmission] = useState(false)
 
   useEffect(() => {
     fetchQuestions()
     fetchSubmissions()
   }, [])
-
 
   const fetchQuestions = async () => {
     try {
@@ -38,7 +40,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
         .eq('is_published', true)
         .order('created_at', { ascending: false })
 
-
       if (error) throw error
       setQuestions(data || [])
     } catch (err) {
@@ -46,7 +47,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
       setError('Failed to load questions')
     }
   }
-
 
   const fetchSubmissions = async () => {
     try {
@@ -56,14 +56,12 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
         .eq('student_id', user?.id)
         .order('submitted_at', { ascending: false })
 
-
       if (error) throw error
       setSubmissions(data || [])
     } catch (err) {
       console.error('❌ Error fetching submissions:', err)
     }
   }
-
 
   const handleSelectQuestion = (question: CodingQuestion) => {
     setSelectedQuestion(question)
@@ -77,10 +75,9 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
     else setLanguage(lang)
   }
 
-
   const handleRunComplete = (result: ExecutionResult) => {
     setLastRunResult(result)
-    
+
     // Show appropriate message
     if (result.status === 'success') {
       setError(null) // Clear any previous errors
@@ -91,13 +88,11 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
     }
   }
 
-
   const handleSubmitCode = async () => {
     if (!selectedQuestion || !code.trim()) {
       setError('Please write some code first')
       return
     }
-
 
     // Check if code passed all tests (sample + hidden) before allowing submission
     if (!lastRunResult || lastRunResult.status !== 'success') {
@@ -113,7 +108,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
       }
     }
 
-
     try {
       setSubmitting(true)
       setError(null)
@@ -123,6 +117,8 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
         code,
         language
       )
+      // Refresh submissions after successful submission
+      await fetchSubmissions()
       navigate(`/submission/${submission.id}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Submission failed'
@@ -132,6 +128,31 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
     }
   }
 
+  const handleViewSubmission = async (questionId: string) => {
+    try {
+      setIsLoadingSubmission(true)
+      // Fetch the most recent accepted submission for this question
+      const { data, error } = await supabase
+        .from('coding_submissions')
+        .select('*')
+        .eq('question_id', questionId)
+        .eq('student_id', user?.id)
+        .eq('status', 'accepted')
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error) throw error
+
+      setSelectedSubmission(data as CodingSubmission)
+      setIsModalOpen(true)
+    } catch (err) {
+      console.error('❌ Error fetching submission:', err)
+      setError('Failed to load submission')
+    } finally {
+      setIsLoadingSubmission(false)
+    }
+  }
 
   const filteredQuestions = questions.filter(q => {
     if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty) return false
@@ -140,23 +161,20 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
   })
 
   // Check if current question's solution was accepted
-  const isQuestionAccepted = selectedQuestion 
+  const isQuestionAccepted = selectedQuestion
     ? submissions.some(s => s.question_id === selectedQuestion.id && s.status === 'accepted')
     : false
-
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">📝 Coding Practice Lab</h1>
 
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Questions List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-4 sticky top-6">
               <h2 className="text-lg font-bold mb-4">Problems ({filteredQuestions.length})</h2>
-
 
               {/* Filters */}
               <div className="mb-4 space-y-2">
@@ -171,7 +189,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   <option value="hard">Hard</option>
                 </select>
 
-
                 <select
                   value={filterLanguage}
                   onChange={(e) => setFilterLanguage(e.target.value)}
@@ -184,7 +201,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   <option value="c++">C++</option>
                 </select>
               </div>
-
 
               {/* Questions */}
               <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -203,11 +219,15 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                     >
                       <div className="font-semibold text-sm">{q.title}</div>
                       <div className="text-xs text-gray-600 mt-1">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium mr-2 ${
-                          q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                          q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
+                        <span
+                          className={`inline-block px-2 py-1 rounded text-xs font-medium mr-2 ${
+                            q.difficulty === 'easy'
+                              ? 'bg-green-100 text-green-700'
+                              : q.difficulty === 'medium'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
                           {q.difficulty}
                         </span>
                         {submitted ? '✅ Passed' : attempted ? '🔄 Attempted' : '⭕ Not started'}
@@ -219,7 +239,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
             </div>
           </div>
 
-
           {/* Editor & Submission */}
           <div className="lg:col-span-2">
             {selectedQuestion ? (
@@ -229,13 +248,21 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-bold">{selectedQuestion.title}</h2>
                     {isQuestionAccepted && (
-                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm font-semibold">
-                        ✅ Accepted
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm font-semibold">
+                          ✅ Accepted
+                        </span>
+                        <button
+                          onClick={() => handleViewSubmission(selectedQuestion.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-semibold transition-colors"
+                        >
+                          View Submission
+                        </button>
+                      </div>
                     )}
                   </div>
                   <p className="text-gray-600 mt-2">{selectedQuestion.description}</p>
-                  
+
                   {/* Sample Input/Output */}
                   {selectedQuestion.sample_input && (
                     <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
@@ -254,7 +281,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                     </div>
                   )}
 
-
                   <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
                     <div className="p-2 bg-blue-100 rounded">
                       <strong>Difficulty:</strong> {selectedQuestion.difficulty}
@@ -268,7 +294,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   </div>
                 </div>
 
-
                 {/* Code Editor with Hidden Test Support */}
                 <CodeEditor
                   question={selectedQuestion}
@@ -279,7 +304,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   onRunComplete={handleRunComplete}
                 />
 
-
                 {/* Error Alert */}
                 {error && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -287,21 +311,20 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   </div>
                 )}
 
-
                 {/* Success Alert */}
                 {lastRunResult && lastRunResult.status === 'success' && (
                   <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                     <strong>✅ All tests passed!</strong>
                     {lastRunResult.hiddenTestsResult && (
                       <div className="text-sm mt-2">
-                        Sample Test: ✅ Passed<br/>
+                        Sample Test: ✅ Passed
+                        <br />
                         Hidden Tests: ✅ {lastRunResult.hiddenTestsResult.testsPassed}/{lastRunResult.hiddenTestsResult.totalTests} Passed
                       </div>
                     )}
                     Your code is ready to submit.
                   </div>
                 )}
-
 
                 {/* Test Failed Alert */}
                 {lastRunResult && lastRunResult.status === 'test_failed' && (
@@ -315,7 +338,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   </div>
                 )}
 
-
                 {/* Submit Button */}
                 <button
                   onClick={handleSubmitCode}
@@ -324,7 +346,6 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                 >
                   {submitting ? '⏳ Submitting...' : '🚀 Submit Solution'}
                 </button>
-
 
                 {/* Requirement Note */}
                 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm text-yellow-800">
@@ -339,9 +360,17 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
           </div>
         </div>
       </div>
+
+      {/* Submission Detail Modal */}
+      <SubmissionDetailModal
+        submission={selectedSubmission}
+        question={selectedQuestion}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        isLoading={isLoadingSubmission}
+      />
     </div>
   )
 }
-
 
 export default StudentCodingLabPage

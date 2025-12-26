@@ -14,6 +14,8 @@ export interface CodingQuestion {
   programming_language: 'python' | 'javascript' | 'java' | 'cpp' | 'c' | 'go' | 'rust'
   sample_input: string
   sample_output: string
+  sample_input2: string
+  sample_output2: string
   test_cases: any[]
   time_limit_seconds: number
   memory_limit_mb: number

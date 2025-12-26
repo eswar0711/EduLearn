@@ -40,6 +40,8 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
     programming_language: 'python',
     sample_input: '',
     sample_output: '',
+    sample_input2: '',
+    sample_output2: '',
     time_limit: 5,
     memory_limit: 256,
     is_published: false,
@@ -302,6 +304,8 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
         programming_language: 'python',
         sample_input: '',
         sample_output: '',
+        sample_input2: '',
+        sample_output2: '',
         time_limit: 5,
         memory_limit: 256,
         is_published: false,
@@ -336,6 +340,8 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
       programming_language: question.programming_language,
       sample_input: question.sample_input,
       sample_output: question.sample_output,
+      sample_input2: question.sample_input2,
+      sample_output2: question.sample_output2,
       time_limit: question.time_limit,
       memory_limit: question.memory_limit,
       is_published: question.is_published,
@@ -358,6 +364,8 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
                 programming_language: 'python',
                 sample_input: '',
                 sample_output: '',
+                sample_input2: '',
+                sample_output2: '',
                 time_limit: 5,
                 memory_limit: 256,
                 is_published: false,
@@ -420,16 +428,30 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
                 />
 
                 <textarea
-                  placeholder="Sample Input"
+                  placeholder="Sample Input 1"
                   value={formData.sample_input}
                   onChange={(e) => setFormData({ ...formData, sample_input: e.target.value })}
                   className="p-2 border rounded"
                 />
 
                 <textarea
-                  placeholder="Sample Output"
+                  placeholder="Sample Output 1"
                   value={formData.sample_output}
                   onChange={(e) => setFormData({ ...formData, sample_output: e.target.value })}
+                  className="p-2 border rounded"
+                />
+
+                <textarea
+                  placeholder="Sample Input 2"
+                  value={formData.sample_input2}
+                  onChange={(e) => setFormData({ ...formData, sample_input2: e.target.value })}
+                  className="p-2 border rounded"
+                />
+
+                <textarea
+                  placeholder="Sample Output 2"
+                  value={formData.sample_output2}
+                  onChange={(e) => setFormData({ ...formData, sample_output2: e.target.value })}
                   className="p-2 border rounded"
                 />
 

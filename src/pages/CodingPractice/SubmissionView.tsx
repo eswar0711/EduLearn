@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { CodingSubmission, CodingQuestion } from '../../utils/codingLabService'
+import SubmissionDetailModal from './SubmissionDetailModal'
 
 const SubmissionView: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -11,6 +11,7 @@ const SubmissionView: React.FC = () => {
   const [question, setQuestion] = useState<CodingQuestion | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     fetchSubmission()
@@ -83,7 +84,17 @@ const SubmissionView: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           {/* Header */}
           <div className="p-6 border-b">
-            <h1 className="text-3xl font-bold">{question?.title}</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-3xl font-bold">{question?.title}</h1>
+              {submission?.status === 'accepted' && (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors"
+                >
+                  View Details
+                </button>
+              )}
+            </div>
             <div className="mt-4 flex items-center gap-4">
               <span
                 className={`px-3 py-1 rounded font-semibold ${
@@ -92,7 +103,7 @@ const SubmissionView: React.FC = () => {
                     : 'bg-red-100 text-red-800'
                 }`}
               >
-                {submission?.status === 'accepted' ? '✅ Accepted' : '❌ Error'}
+                {submission?.status === 'accepted' ? '✅ Accepted' : '❌ Failed'}
               </span>
               <span className="text-gray-600">
                 Submitted: {new Date(submission?.submitted_at || '').toLocaleString()}
@@ -170,6 +181,14 @@ const SubmissionView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal for detailed submission view */}
+      <SubmissionDetailModal
+        submission={submission}
+        question={question}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   )
 }
