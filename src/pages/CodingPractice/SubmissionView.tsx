@@ -128,6 +128,18 @@ const SubmissionView: React.FC = () => {
                   {question?.sample_output}
                 </pre>
               </div>
+              <div className="p-3 bg-blue-50 rounded">
+                <strong>Sample Input:</strong>
+                <pre className="mt-2 text-sm bg-white p-2 rounded overflow-x-auto">
+                  {question?.sample_input2}
+                </pre>
+              </div>
+              <div className="p-3 bg-green-50 rounded">
+                <strong>Sample Output:</strong>
+                <pre className="mt-2 text-sm bg-white p-2 rounded overflow-x-auto">
+                  {question?.sample_output2}
+                </pre>
+              </div>
             </div>
           </div>
 

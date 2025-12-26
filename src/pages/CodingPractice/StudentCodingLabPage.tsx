@@ -278,6 +278,22 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                           {selectedQuestion.sample_output}
                         </pre>
                       </div>
+                      </div>
+                  )}
+                  {selectedQuestion.sample_input2 && (
+                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                      <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                        <strong className="text-blue-700">📥 Sample Input:</strong>
+                        <pre className="mt-2 font-mono text-xs bg-white p-2 rounded border border-blue-100 max-h-20 overflow-y-auto">
+                          {selectedQuestion.sample_input2}
+                        </pre>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded border border-green-200">
+                        <strong className="text-green-700">📤 Expected Output:</strong>
+                        <pre className="mt-2 font-mono text-xs bg-white p-2 rounded border border-green-100 max-h-20 overflow-y-auto">
+                          {selectedQuestion.sample_output2}
+                        </pre>
+                      </div>
                     </div>
                   )}
 
@@ -344,7 +360,7 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
                   disabled={submitting || !code.trim() || !lastRunResult || lastRunResult.status !== 'success'}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded text-lg transition-colors"
                 >
-                  {submitting ? '⏳ Submitting...' : '🚀 Submit Solution'}
+                  {submitting ? '⏳ Submitting...' : '🚀 Final Submit'}
                 </button>
 
                 {/* Requirement Note */}

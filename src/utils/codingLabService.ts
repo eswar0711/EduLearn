@@ -1,9 +1,13 @@
 import axiosClient from './axiosClient'
 import { supabase } from './supabaseClient'
 
+
+
 // ============================================================================
 // TYPES
 // ============================================================================
+
+
 
 export interface CodingQuestion {
   id: string
@@ -15,8 +19,6 @@ export interface CodingQuestion {
   sample_input: string
   sample_output: string
   sample_input2: string
-
-  
   sample_output2: string
   time_limit: number
   memory_limit: number
@@ -24,10 +26,14 @@ export interface CodingQuestion {
   created_at: string
 }
 
+
+
 export interface TestCase {
   input: string
   expectedOutput: string
 }
+
+
 
 export interface HiddenTestCase {
   id: string
@@ -39,6 +45,8 @@ export interface HiddenTestCase {
   created_at: string
 }
 
+
+
 export interface ExecutionResult {
   status: 'success' | 'error' | 'runtime_error' | 'timeout' | 'test_failed'
   output: string
@@ -49,6 +57,16 @@ export interface ExecutionResult {
   totalTests: number
   expectedOutput?: string
   actualOutput?: string
+  
+  // 👇 NEW FIELD FOR MULTIPLE SAMPLE TESTS
+  sampleTestResults?: {
+    index: number
+    input: string
+    expectedOutput: string
+    actualOutput: string
+    passed: boolean
+  }[]
+  
   hiddenTestsResult?: {
     testsPassed: number
     totalTests: number
@@ -61,6 +79,8 @@ export interface ExecutionResult {
     }>
   }
 }
+
+
 
 export interface CodingSubmission {
   id: string
@@ -78,9 +98,13 @@ export interface CodingSubmission {
   submitted_at: string
 }
 
+
+
 // ============================================================================
 // DATABASE SERVICE
 // ============================================================================
+
+
 
 class CodingLabDatabaseService {
   static async getQuestion(questionId: string): Promise<CodingQuestion | null> {
@@ -91,6 +115,7 @@ class CodingLabDatabaseService {
         .eq('id', questionId)
         .single()
 
+
       if (error) throw error
       return data as CodingQuestion
     } catch (error) {
@@ -98,6 +123,7 @@ class CodingLabDatabaseService {
       throw error
     }
   }
+
 
   static async getPublishedQuestions(): Promise<CodingQuestion[]> {
     try {
@@ -107,6 +133,7 @@ class CodingLabDatabaseService {
         .eq('is_published', true)
         .order('created_at', { ascending: false })
 
+
       if (error) throw error
       return data as CodingQuestion[]
     } catch (error) {
@@ -114,6 +141,7 @@ class CodingLabDatabaseService {
       return []
     }
   }
+
 
   static async getHiddenTests(questionId: string): Promise<HiddenTestCase[]> {
     try {
@@ -124,6 +152,7 @@ class CodingLabDatabaseService {
         .eq('is_active', true)
         .order('test_number', { ascending: true })
 
+
       if (error) throw error
       return data as HiddenTestCase[]
     } catch (error) {
@@ -131,6 +160,7 @@ class CodingLabDatabaseService {
       return []
     }
   }
+
 
   static async saveSubmission(submission: Partial<CodingSubmission>): Promise<CodingSubmission> {
     try {
@@ -140,6 +170,7 @@ class CodingLabDatabaseService {
         .select()
         .single()
 
+
       if (error) throw error
       return data as CodingSubmission
     } catch (error) {
@@ -148,6 +179,7 @@ class CodingLabDatabaseService {
     }
   }
 
+
   static async getSubmission(submissionId: string): Promise<CodingSubmission | null> {
     try {
       const { data, error } = await supabase
@@ -155,6 +187,7 @@ class CodingLabDatabaseService {
         .select('*')
         .eq('id', submissionId)
         .single()
+
 
       if (error) throw error
       return data as CodingSubmission
@@ -165,9 +198,13 @@ class CodingLabDatabaseService {
   }
 }
 
+
+
 // ============================================================================
 // PISTON SERVICE (FREE & NO API KEY NEEDED)
 // ============================================================================
+
+
 
 interface PistonResponse {
   language: string
@@ -181,8 +218,11 @@ interface PistonResponse {
   }
 }
 
+
+
 class PistonService {
   private baseUrl = 'https://emkc.org/api/v2/piston'
+
 
   private languageMap: Record<string, string> = {
     python: 'python',
@@ -192,6 +232,7 @@ class PistonService {
     c: 'c',
   }
 
+
   private versionMap: Record<string, string> = {
     python: '3.10.0',
     javascript: '18.15.0',
@@ -199,6 +240,7 @@ class PistonService {
     cpp: '10.2.0',
     c: '10.2.0',
   }
+
 
   private getLanguageInfo(lang: string): { language: string; version: string } {
     const normalizedLang = lang.toLowerCase()
@@ -208,6 +250,7 @@ class PistonService {
     }
   }
 
+
   private normalizeOutput(output: string): string {
     return output
       .trim()
@@ -216,6 +259,7 @@ class PistonService {
       .filter(line => line.length > 0)
       .join('\n')
   }
+
 
   async execute(
     code: string,
@@ -228,8 +272,10 @@ class PistonService {
       const startTime = Date.now()
       const { language: pistonLang, version } = this.getLanguageInfo(language)
 
+
       // If we have test cases, execute with the first one's input
       const stdin = testCases.length > 0 ? testCases[0].input : ''
+
 
       const response = await axiosClient.post<PistonResponse>(
         `${this.baseUrl}/execute`,
@@ -250,25 +296,31 @@ class PistonService {
         }
       )
 
+
       const endTime = Date.now()
-      const executionTime = (endTime - startTime) / 1000
+      const executionTime = Math.round(endTime - startTime)
+
 
       const data = response.data
       const stdout = data.run?.stdout || ''
       const stderr = data.run?.stderr || ''
       const exitCode = data.run?.code || 0
 
+
       // Normalize outputs for comparison
       const normalizedActualOutput = this.normalizeOutput(stdout)
       const normalizedExpectedOutput = expectedOutput ? this.normalizeOutput(expectedOutput) : ''
 
+
       console.log('📊 Actual Output:', normalizedActualOutput)
       console.log('📊 Expected Output:', normalizedExpectedOutput)
+
 
       let status: 'success' | 'error' | 'runtime_error' | 'timeout' | 'test_failed' = 'success'
       let testsPassed = 0
       let output = stdout.trim()
       let error: string | null = null
+
 
       // 1. Check for compilation/runtime errors
       if (exitCode !== 0 || stderr) {
@@ -288,7 +340,9 @@ class PistonService {
         testsPassed = 1
       }
 
-      console.log(`✅ Execution completed with status: ${status}`)
+
+      console.log(`✅ Execution completed with status: ${status} (${executionTime}ms)`)
+
 
       return {
         status,
@@ -315,6 +369,7 @@ class PistonService {
     }
   }
 
+
   private getExtension(lang: string): string {
     const ext: Record<string, string> = {
       python: 'py',
@@ -327,9 +382,138 @@ class PistonService {
   }
 }
 
+
+
+// ============================================================================
+// 🆕 NEW FUNCTION: Execute both sample tests (THE FIX!)
+// ============================================================================
+
+
+async function runBothSampleTests(
+  code: string,
+  language: string,
+  question: CodingQuestion
+): Promise<{
+  sampleTestResults: Array<{
+    index: number
+    input: string
+    expectedOutput: string
+    actualOutput: string
+    passed: boolean
+  }>
+  allPassed: boolean
+  executionTime: number
+}> {
+  const results = []
+  let allPassed = true
+  let totalExecutionTime = 0
+  const service = new PistonService()
+
+
+  // 🧪 Test 1: sample_input & sample_output
+  if (question.sample_input && question.sample_output) {
+    try {
+      console.log('🧪 Running Sample Test 1...')
+      const result = await service.execute(
+        code,
+        language,
+        [{
+          input: question.sample_input,
+          expectedOutput: question.sample_output,
+        }],
+        question.sample_output
+      )
+
+
+      const passed = result.status === 'success' && result.testsPassed === 1
+      if (!passed) allPassed = false
+      
+      totalExecutionTime += result.executionTime
+
+
+      results.push({
+        index: 1,
+        input: question.sample_input,
+        expectedOutput: result.expectedOutput || question.sample_output,
+        actualOutput: result.actualOutput || result.output,
+        passed,
+      })
+
+
+      console.log(`✅ Sample Test 1: ${passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`)
+    } catch (error) {
+      console.error('❌ Error in Sample Test 1:', error)
+      allPassed = false
+      results.push({
+        index: 1,
+        input: question.sample_input,
+        expectedOutput: question.sample_output,
+        actualOutput: 'Error executing test',
+        passed: false,
+      })
+    }
+  }
+
+
+  // 🧪 Test 2: sample_input2 & sample_output2 (if exists)
+  if (question.sample_input2 && question.sample_output2) {
+    try {
+      console.log('🧪 Running Sample Test 2...')
+      const result = await service.execute(
+        code,
+        language,
+        [{
+          input: question.sample_input2,
+          expectedOutput: question.sample_output2,
+        }],
+        question.sample_output2
+      )
+
+
+      const passed = result.status === 'success' && result.testsPassed === 1
+      if (!passed) allPassed = false
+      
+      totalExecutionTime += result.executionTime
+
+
+      results.push({
+        index: 2,
+        input: question.sample_input2,
+        expectedOutput: result.expectedOutput || question.sample_output2,
+        actualOutput: result.actualOutput || result.output,
+        passed,
+      })
+
+
+      console.log(`✅ Sample Test 2: ${passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`)
+    } catch (error) {
+      console.error('❌ Error in Sample Test 2:', error)
+      allPassed = false
+      results.push({
+        index: 2,
+        input: question.sample_input2,
+        expectedOutput: question.sample_output2,
+        actualOutput: 'Error executing test',
+        passed: false,
+      })
+    }
+  }
+
+
+  return {
+    sampleTestResults: results,
+    allPassed,
+    executionTime: totalExecutionTime,
+  }
+}
+
+
+
 // ============================================================================
 // QUICK RUN FUNCTION (Execute code and validate against expected output)
 // ============================================================================
+
+
 
 export async function quickRunCode(
   code: string,
@@ -341,6 +525,7 @@ export async function quickRunCode(
     console.log('⚡ Quick running code with validation...')
     const service = new PistonService()
 
+
     // Create test cases array for compatibility
     const testCases: TestCase[] = [
       {
@@ -348,6 +533,7 @@ export async function quickRunCode(
         expectedOutput: expectedOutput,
       },
     ]
+
 
     const result = await service.execute(code, language, testCases, expectedOutput)
     console.log('✅ Quick run completed')
@@ -366,9 +552,13 @@ export async function quickRunCode(
   }
 }
 
+
+
 // ============================================================================
 // HIDDEN TESTS EXECUTION FUNCTION
 // ============================================================================
+
+
 
 async function runHiddenTests(
   code: string,
@@ -377,6 +567,7 @@ async function runHiddenTests(
 ): Promise<{
   testsPassed: number
   totalTests: number
+  executionTime: number
   results: Array<{
     testNumber: number
     passed: boolean
@@ -387,11 +578,14 @@ async function runHiddenTests(
 }> {
   const results = []
   let testsPassed = 0
+  let totalExecutionTime = 0
   const service = new PistonService()
+
 
   for (const test of hiddenTests) {
     try {
       console.log(`🧪 Running hidden test ${test.test_number}...`)
+
 
       // Create test case for this hidden test
       const testCases: TestCase[] = [
@@ -401,13 +595,19 @@ async function runHiddenTests(
         },
       ]
 
+
       // Execute code with this specific test
       const result = await service.execute(code, language, testCases, test.expected_output)
 
+
       // Check if test passed
       const passed = result.status === 'success' && result.testsPassed === 1
+      
+      totalExecutionTime += result.executionTime
+
 
       if (passed) testsPassed++
+
 
       results.push({
         testNumber: test.test_number,
@@ -417,7 +617,8 @@ async function runHiddenTests(
         actualOutput: result.output,
       })
 
-      console.log(`✅ Test ${test.test_number}: ${passed ? 'PASSED' : 'FAILED'}`)
+
+      console.log(`✅ Test ${test.test_number}: ${passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`)
     } catch (error) {
       console.error(`❌ Error running hidden test ${test.test_number}:`, error)
       results.push({
@@ -430,16 +631,22 @@ async function runHiddenTests(
     }
   }
 
+
   return {
     testsPassed,
     totalTests: hiddenTests.length,
+    executionTime: totalExecutionTime,
     results,
   }
 }
 
+
+
 // ============================================================================
-// MAIN EXECUTION & SAVE FUNCTION WITH HIDDEN TESTS
+// 🔄 UPDATED: executeAndSaveCode (Now runs BOTH sample tests)
 // ============================================================================
+
+
 
 export async function executeAndSaveCode(
   questionId: string,
@@ -450,72 +657,71 @@ export async function executeAndSaveCode(
   try {
     console.log('🚀 Executing code with sample + hidden tests...')
 
+
     // 1. Fetch question
     const question = await CodingLabDatabaseService.getQuestion(questionId)
     if (!question) throw new Error('Question not found')
 
-    // 2. Create sample test case
-    const testCases: TestCase[] = []
-    if (question.sample_input && question.sample_output) {
-      testCases.push({
-        input: question.sample_input,
-        expectedOutput: question.sample_output,
-      })
-    }
 
-    // 3. Execute code with sample test
-    const pistonService = new PistonService()
-    const result = await pistonService.execute(
-      code,
-      language,
-      testCases,
-      question.sample_output
-    )
+    // 2. 👇 Run BOTH sample tests (UPDATED!)
+    const sampleTestsResult = await runBothSampleTests(code, language, question)
+    
+    const allSamplesPassed = sampleTestsResult.allPassed
 
-    console.log(`📊 Sample test result: ${result.testsPassed}/${result.totalTests}`)
 
-    let finalStatus: CodingSubmission["status"] = result.status === 'success' ? 'accepted' : 'error'
-    let totalTestsPassed = result.testsPassed
-    let totalTests = 1
-    let hiddenTestsData = null
+    console.log(`📊 Sample tests: ${sampleTestsResult.sampleTestResults.filter(t => t.passed).length}/${sampleTestsResult.sampleTestResults.length} (${sampleTestsResult.executionTime}ms)`)
 
-    // 4. If sample test passed, run hidden tests
-    if (result.testsPassed === 1) {
-      console.log('🔓 Sample passed, checking hidden tests...')
+
+    let finalStatus: CodingSubmission['status'] = allSamplesPassed ? 'accepted' : 'error'
+    let totalTestsPassed = sampleTestsResult.sampleTestResults.filter(t => t.passed).length
+    let totalTests = sampleTestsResult.sampleTestResults.length
+    let output = sampleTestsResult.sampleTestResults[0]?.actualOutput || ''
+    let errorMessage = allSamplesPassed ? null : 'Sample tests failed'
+    let totalExecutionTime = sampleTestsResult.executionTime
+
+
+    // 3. If sample tests passed, run hidden tests
+    if (allSamplesPassed) {
+      console.log('✅ All samples passed, checking hidden tests...')
       const hiddenTests = await CodingLabDatabaseService.getHiddenTests(questionId)
 
+
       if (hiddenTests.length > 0) {
-        hiddenTestsData = await runHiddenTests(code, language, hiddenTests)
-        console.log(`🔒 Hidden tests result: ${hiddenTestsData.testsPassed}/${hiddenTestsData.totalTests}`)
+        const hiddenTestsData = await runHiddenTests(code, language, hiddenTests)
+        console.log(`🔒 Hidden tests: ${hiddenTestsData.testsPassed}/${hiddenTestsData.totalTests} (${hiddenTestsData.executionTime}ms)`)
+
 
         // Update final status based on hidden tests
         if (hiddenTestsData.testsPassed === hiddenTestsData.totalTests) {
           finalStatus = 'accepted'
-          totalTestsPassed = 1 + hiddenTestsData.testsPassed
-          totalTests = 1 + hiddenTestsData.totalTests
         } else {
           finalStatus = 'error'
-          totalTestsPassed = 1 + hiddenTestsData.testsPassed
-          totalTests = 1 + hiddenTestsData.totalTests
         }
+        
+        totalTestsPassed = totalTests + hiddenTestsData.testsPassed
+        totalTests = totalTests + hiddenTestsData.totalTests
+        totalExecutionTime += hiddenTestsData.executionTime
+        errorMessage = hiddenTestsData.testsPassed === hiddenTestsData.totalTests ? null : 'Some hidden tests failed'
       }
     }
 
-    // 5. Save submission
+
+    // 4. Save submission
     const submission = await CodingLabDatabaseService.saveSubmission({
       question_id: questionId,
       student_id: studentId,
       code,
       language,
       status: finalStatus,
-      output: result.output,
-      error_message: result.error,
-      execution_time: Math.round(result.executionTime * 1000),
-      memory_used: result.memoryUsed,
+      output,
+      error_message: errorMessage,
+      execution_time: totalExecutionTime,
+      memory_used: 0,
       tests_passed: totalTestsPassed,
       total_tests: totalTests,
       submitted_at: new Date().toISOString(),
     })
+
 
     console.log('✅ Submission saved:', submission.id)
     return submission
@@ -525,9 +731,13 @@ export async function executeAndSaveCode(
   }
 }
 
+
+
 // ============================================================================
-// QUICK EXECUTION WITH HIDDEN TESTS (For student preview)
+// 🔄 UPDATED: executeCodeWithHiddenTests (Now runs BOTH sample tests)
 // ============================================================================
+
+
 
 export async function executeCodeWithHiddenTests(
   questionId: string,
@@ -535,46 +745,69 @@ export async function executeCodeWithHiddenTests(
   language: string
 ): Promise<ExecutionResult> {
   try {
-    console.log('🚀 Executing code for preview...')
+    console.log('🚀 Executing code for preview with ALL sample tests...')
+
 
     // 1. Fetch question
     const question = await CodingLabDatabaseService.getQuestion(questionId)
     if (!question) throw new Error('Question not found')
 
-    // 2. Execute sample test
-    const testCases: TestCase[] = [
-      {
-        input: question.sample_input,
-        expectedOutput: question.sample_output,
-      },
-    ]
 
-    const pistonService = new PistonService()
-    const result = await pistonService.execute(code, language, testCases, question.sample_output)
+    // 2. 👇 Run BOTH sample tests (UPDATED!)
+    const sampleTestsResult = await runBothSampleTests(code, language, question)
+    
+    console.log(`📊 Sample tests: ${sampleTestsResult.sampleTestResults.length} tests (${sampleTestsResult.executionTime}ms)`)
+    sampleTestsResult.sampleTestResults.forEach(test => {
+      console.log(`   Test ${test.index}: ${test.passed ? '✅ PASSED' : '❌ FAILED'}`)
+    })
 
-    console.log(`📊 Sample test: ${result.testsPassed}/${result.totalTests}`)
 
-    // 3. If sample passed, run hidden tests
-    if (result.testsPassed === 1) {
+    // 3. Prepare initial result (using first test for backward compatibility)
+    const firstTest = sampleTestsResult.sampleTestResults[0]
+    const result: ExecutionResult = {
+      status: sampleTestsResult.allPassed ? 'success' : 'test_failed',
+      output: firstTest?.actualOutput || '',
+      error: null,
+      executionTime: sampleTestsResult.executionTime,
+      memoryUsed: 0,
+      testsPassed: sampleTestsResult.sampleTestResults.filter(t => t.passed).length,
+      totalTests: sampleTestsResult.sampleTestResults.length,
+      expectedOutput: firstTest?.expectedOutput,
+      actualOutput: firstTest?.actualOutput,
+      sampleTestResults: sampleTestsResult.sampleTestResults, // 👈 ADD THIS!
+    }
+
+
+    // 4. If all sample tests passed, run hidden tests
+    if (sampleTestsResult.allPassed) {
+      console.log('✅ All sample tests passed, checking hidden tests...')
       const hiddenTests = await CodingLabDatabaseService.getHiddenTests(questionId)
+
 
       if (hiddenTests.length > 0) {
         const hiddenTestsResult = await runHiddenTests(code, language, hiddenTests)
-        console.log(`🔒 Hidden tests: ${hiddenTestsResult.testsPassed}/${hiddenTestsResult.totalTests}`)
+        console.log(`🔒 Hidden tests: ${hiddenTestsResult.testsPassed}/${hiddenTestsResult.totalTests} (${hiddenTestsResult.executionTime}ms)`)
+
 
         // Update result with hidden tests data
         result.hiddenTestsResult = hiddenTestsResult
-        result.totalTests = 1 + hiddenTestsResult.totalTests
-        result.testsPassed = 1 + hiddenTestsResult.testsPassed
+        result.totalTests = sampleTestsResult.sampleTestResults.length + hiddenTestsResult.totalTests
+        result.testsPassed = sampleTestsResult.sampleTestResults.filter(t => t.passed).length + hiddenTestsResult.testsPassed
+        result.executionTime = sampleTestsResult.executionTime + hiddenTestsResult.executionTime
 
-        // Update status based on all tests
-        if (hiddenTestsResult.testsPassed === hiddenTestsResult.totalTests) {
+
+        // Update status based on ALL tests
+        if (
+          sampleTestsResult.allPassed &&
+          hiddenTestsResult.testsPassed === hiddenTestsResult.totalTests
+        ) {
           result.status = 'success'
         } else {
           result.status = 'test_failed'
         }
       }
     }
+
 
     return result
   } catch (error: any) {
@@ -590,5 +823,7 @@ export async function executeCodeWithHiddenTests(
     }
   }
 }
+
+
 
 export { CodingLabDatabaseService }
