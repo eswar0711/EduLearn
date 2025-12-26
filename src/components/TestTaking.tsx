@@ -5,6 +5,7 @@ import type { User, Question } from '../utils/supabaseClient';
 import { autoGradeMCQ } from '../utils/autoGrading';
 import NavigationSidebar from './NavigationSidebar';
 import ConfirmationModal from './ConfirmationModal';
+import QuestionDisplay from '../components/TestManager/QuestionDisplay';
 import {
   getOrCreateTestSession,
   calculateRemainingTime,
@@ -15,7 +16,7 @@ import {
   deleteDraftAnswers,
   type TestSession,
 } from '../utils/testTimer';
-import { Clock, Send, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -37,7 +38,12 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
   const [isTimeExpired, setIsTimeExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // ✅ NEW STATE VARIABLES FOR ONE-QUESTION INTERFACE
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [showUnansweredWarning, setShowUnansweredWarning] = useState(false);
 
+  // Initialize test
   useEffect(() => {
     if (!assessmentId) {
       setError('Assessment ID is missing');
@@ -124,6 +130,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     initializeTest();
   }, [assessmentId]);
 
+  // Timer countdown
   useEffect(() => {
     if (!testSession || isTimeExpired || submitting) return;
 
@@ -144,8 +151,10 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     return () => clearInterval(timer);
   }, [testSession, isTimeExpired, submitting]);
 
+  // Auto-save answers
   useEffect(() => {
-    if (!testSession || submitting || Object.keys(answers).length === 0) return;
+    if (!testSession || submitting || Object.keys(answers).length === 0)
+      return;
 
     console.log('💾 Auto-saving answers...');
     saveDraftAnswers(testSession.id, answers);
@@ -158,25 +167,49 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     return () => clearInterval(saveInterval);
   }, [testSession, answers, submitting]);
 
+  // ✅ HANDLE ANSWER CHANGE
   const handleAnswerChange = (questionId: string, answer: string) => {
     console.log(`✏️ Answer changed for Q${questionId}: ${answer}`);
-    setAnswers(prev => ({ ...prev, [questionId]: answer }));
+    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
+  // ✅ NEW: HANDLE NAVIGATION BETWEEN QUESTIONS
+  const handleNavigateQuestion = (newIndex: number) => {
+    console.log(`➡️ Navigating to question ${newIndex + 1}`);
+    setCurrentQuestionIndex(newIndex);
+  };
+
+  // ✅ NEW: HANDLE SUBMIT CLICK (CHECK FOR UNANSWERED)
+  const handleSubmitClick = () => {
+    const unansweredQuestions = questions
+      .map((q, idx) => (!answers[q.id] ? idx + 1 : null))
+      .filter((n) => n !== null);
+
+    if (unansweredQuestions.length > 0) {
+      setShowUnansweredWarning(true);
+    } else {
+      setShowConfirmModal(true);
+    }
+  };
+
+  // ✅ NEW: CONFIRM UNANSWERED AND PROCEED TO FINAL CONFIRMATION
+  const handleConfirmUnanswered = () => {
+    setShowUnansweredWarning(false);
+    setShowConfirmModal(true);
+  };
+
+  // Auto-submit when time expires
   const handleAutoSubmit = async () => {
     if (!testSession) return;
     await submitTest(true);
   };
 
-  const handleSubmit = async () => {
-    if (submitting) return;
-    setShowConfirmModal(true);
-  };
-
+  // Final submit handler
   const handleConfirmSubmit = async () => {
     await submitTest(false);
   };
 
+  // Submit test to database
   const submitTest = async (isAutoSubmit: boolean) => {
     if (!testSession) return;
 
@@ -187,7 +220,8 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
 
       const mcqScore = autoGradeMCQ(questions, answers);
       const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
-      const percentageScore = totalMarks > 0 ? Math.round((mcqScore / totalMarks) * 100) : 0;
+      const percentageScore =
+        totalMarks > 0 ? Math.round((mcqScore / totalMarks) * 100) : 0;
 
       const { data: submission, error: submitError } = await supabase
         .from('submissions')
@@ -214,7 +248,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
 
       console.log('✅ Test submitted and session locked');
 
-      // Show success toast and redirect to results summary (not detailed results)
+      // Show success toast and redirect to results summary
       toast.success(
         isAutoSubmit
           ? '✅ Test auto-submitted successfully!'
@@ -242,6 +276,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     }
   };
 
+  // Format time (HH:MM:SS)
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -253,17 +288,21 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     return `${mins}m ${secs.toString().padStart(2, '0')}s`;
   };
 
+  // Get time color based on remaining time
   const getTimeColor = (): string => {
     if (timeLeft <= 300) return 'text-red-600';
     if (timeLeft <= 600) return 'text-yellow-600';
     return 'text-green-600';
   };
 
+  // Get timer background color
   const getTimeBgColor = (): string => {
     if (timeLeft <= 300) return 'bg-red-50';
     if (timeLeft <= 600) return 'bg-yellow-50';
     return 'bg-green-50';
   };
+
+  // ============ RENDER STATES ============
 
   if (loading) {
     return (
@@ -316,7 +355,9 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
             <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-red-600 mb-2">⏱️ Time Expired</h2>
+            <h2 className="text-2xl font-bold text-red-600 mb-2">
+              ⏱️ Time Expired
+            </h2>
             <p className="text-gray-600 mb-6">Your test has been auto-submitted.</p>
             <button
               onClick={() => navigate('/')}
@@ -331,120 +372,73 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
     );
   }
 
+  // ============ MAIN RENDER ============
+
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <NavigationSidebar user={user} />
 
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                  {assessment.title}
-                </h2>
-                <p className="text-gray-600">
-                  {assessment.subject} - Unit {assessment.unit}
-                </p>
-              </div>
-
-              <div
-                className={`text-right px-6 py-4 rounded-lg border-2 ${getTimeBgColor()} ${
-                  timeLeft <= 300 ? 'border-red-200' : 'border-green-200'
-                }`}
-              >
-                <div className={`flex items-center gap-2 text-2xl font-bold ${getTimeColor()}`}>
-                  <Clock className="w-6 h-6" />
-                  {formatTime(timeLeft)}
-                </div>
-                <p className="text-sm text-gray-600 mt-1">Time Remaining</p>
-                {timeLeft <= 300 && (
-                  <p className="text-xs text-red-600 font-semibold mt-2 animate-pulse">
-                    ⚠️ Time running out!
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              🔒 Your answers are auto-saved every 5 seconds. Refreshing will NOT lose your answers.
-            </div>
-          </div>
-
-          <div className="space-y-6 mb-6">
-            {questions.map((question, index) => (
-              <div
-                key={question.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Question {index + 1}
-                    <span className="ml-2 text-sm font-normal text-gray-600">
-                      ({question.marks} {question.marks === 1 ? 'mark' : 'marks'})
-                    </span>
-                  </h3>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    {question.type}
-                  </span>
-                </div>
-
-                <p className="text-gray-700 mb-4">{question.question_text}</p>
-
-                {question.type === 'MCQ' && question.options ? (
-                  <div className="space-y-2">
-                    {question.options.map((option, oIndex) => (
-                      <label
-                        key={oIndex}
-                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${question.id}`}
-                          value={option}
-                          checked={answers[question.id] === option}
-                          onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                          className="w-4 h-4 text-blue-600"
-                          disabled={isTimeExpired}
-                        />
-                        <span className="ml-3 text-gray-700">
-                          {String.fromCharCode(65 + oIndex)}. {option}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <textarea
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={6}
-                    placeholder="Type your answer here..."
-                    disabled={isTimeExpired}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-gray-600">
-                {Object.keys(answers).length} of {questions.length} questions answered
+      <div className="flex-1 flex flex-col">
+        {/* ✅ FIXED HEADER WITH TIMER */}
+        <div className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10 shadow-sm">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">
+                {assessment.title}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {assessment.subject} - Unit {assessment.unit}
               </p>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || isTimeExpired}
-                className="px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            </div>
+
+            <div
+              className={`text-right px-6 py-4 rounded-lg border-2 ${getTimeBgColor()} ${
+                timeLeft <= 300 ? 'border-red-200' : 'border-green-200'
+              }`}
+            >
+              <div
+                className={`flex items-center gap-2 text-2xl font-bold ${getTimeColor()}`}
               >
-                <Send className="w-5 h-5" />
-                {submitting ? 'Submitting...' : 'Submit Test'}
-              </button>
+                <Clock className="w-6 h-6" />
+                {formatTime(timeLeft)}
+              </div>
+              <p className="text-sm text-gray-600 mt-1">Time Remaining</p>
+              {timeLeft <= 300 && (
+                <p className="text-xs text-red-600 font-semibold mt-2 animate-pulse">
+                  ⚠️ Time running out!
+                </p>
+              )}
             </div>
           </div>
         </div>
+
+        {/* ✅ QUESTION DISPLAY COMPONENT (ONE QUESTION AT A TIME) */}
+        <QuestionDisplay
+          questions={questions}
+          answers={answers}
+          currentQuestionIndex={currentQuestionIndex}
+          onAnswerChange={handleAnswerChange}
+          onNavigate={handleNavigateQuestion}
+          onSubmit={handleSubmitClick}
+          isTimeExpired={isTimeExpired}
+          submitting={submitting}
+          timeLeft={timeLeft}
+        />
       </div>
 
+      {/* ✅ UNANSWERED QUESTIONS WARNING MODAL */}
+      <ConfirmationModal
+        isOpen={showUnansweredWarning}
+        title="Unanswered Questions"
+        message={`You have left ${questions.length - Object.keys(answers).length} question(s) unanswered. Are you sure you want to submit?`}
+        confirmLabel="Submit Anyway"
+        cancelLabel="Continue"
+        onConfirm={handleConfirmUnanswered}
+        onCancel={() => setShowUnansweredWarning(false)}
+        isLoading={false}
+      />
+
+      {/* ✅ FINAL CONFIRMATION MODAL */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         title="Submit Test?"
@@ -456,6 +450,7 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
         isLoading={submitting}
       />
 
+      {/* TOAST NOTIFICATIONS */}
       <ToastContainer
         position="top-right"
         autoClose={5000}
