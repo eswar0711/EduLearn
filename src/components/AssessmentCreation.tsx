@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User } from '../utils/supabaseClient';
@@ -5,14 +6,13 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import NavigationSidebar from './NavigationSidebar';
-import { PlusCircle, Trash2, Save } from 'lucide-react';
+import BulkUploadModal from './BulkUploadModal';
+import { PlusCircle, Trash2, Save, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 
 interface AssessmentCreationProps {
   user: User;
 }
-
 
 interface QuestionForm {
   type: 'MCQ' | 'Theory';
@@ -22,7 +22,6 @@ interface QuestionForm {
   marks: number;
 }
 
-
 const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
@@ -31,7 +30,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
   const [duration, setDuration] = useState(60);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   const addQuestion = (type: 'MCQ' | 'Theory') => {
     setQuestions([
@@ -46,13 +45,11 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
     ]);
   };
 
-
   const updateQuestion = (index: number, field: string, value: any) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
   };
-
 
   const updateOption = (qIndex: number, oIndex: number, value: string) => {
     const updated = [...questions];
@@ -60,11 +57,18 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
     setQuestions(updated);
   };
 
-
   const removeQuestion = (index: number) => {
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
+  const handleBulkQuestionsAdded = (newQuestions: QuestionForm[]) => {
+    setQuestions([...questions, ...newQuestions]);
+    setShowBulkModal(false);
+    toast.success(`✅ ${newQuestions.length} questions added successfully!`, {
+      position: 'top-right',
+      autoClose: 4000,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +171,6 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
     }
   };
 
-
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <NavigationSidebar user={user} />
@@ -186,6 +189,14 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
         theme="light"
       />
 
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <BulkUploadModal
+          onClose={() => setShowBulkModal(false)}
+          onQuestionsAdded={handleBulkQuestionsAdded}
+        />
+      )}
+
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
@@ -197,7 +208,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
             {/* Basic Info */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -258,7 +269,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">Questions ({questions.length})</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => addQuestion('MCQ')}
@@ -274,6 +285,14 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
                   >
                     <PlusCircle className="w-4 h-4" />
                     Add Theory
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkModal(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Bulk Upload MCQs
                   </button>
                 </div>
               </div>
