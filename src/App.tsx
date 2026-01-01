@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getCurrentUser } from './utils/auth';
 import type { AuthUser } from './utils/auth';
+import CodingProblemPage from './pages/CodingPractice/CodingProblemPage'
+
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -156,6 +158,21 @@ const App: React.FC = () => {
             )
           }
         />
+
+        <Route
+  path="/coding-lab/:problemId"
+  element={
+    user && user.role === 'student' ? (
+      <CodingProblemPage user={componentUser} />
+    ) : (
+      <Navigate to="/login" />
+    )
+  }
+/>
+
+
+
+
         <Route
           path="/coding-management"
           element={

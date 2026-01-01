@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { signIn, signUp } from '../utils/auth';
 import '../index.css';
-import EduvergeLogo from '../assets/smartVerg.jpeg'; // <- your logo file
-import OnlyLogo from '../assets/onlylogo.jpeg'
+import EduvergeLogo from '../assets/smartVerg.jpeg';
+import OnlyLogo from '../assets/onlylogo.jpeg';
+
 interface LoginPageProps {
   onLogin: () => void;
 }
@@ -16,6 +17,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ Demo Accounts
+  const demoAccounts = [
+    {
+      role: 'Student',
+      email: 'student@eduverge.com',
+      password: 'password@123',
+    },
+    {
+      role: 'Faculty',
+      email: 'faculty@eduverge.com',
+      password: 'faculty@1234',
+    },
+    {
+      role: 'Admin',
+      email: 'admin@eduverge.com',
+      password: 'admin@123',
+    },
+  ];
+
+  const fillDemoCredentials = (email: string, password: string) => {
+    setEmail(email);
+    setPassword(password);
+    setIsSignUp(false);
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -26,8 +53,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         await signUp(email, password, first_name, role);
         alert('Your account is created. Please sign in using the same credentials.');
         setIsSignUp(false);
-        //setEmail('');
-        //setPassword('');
         setName('');
         setRole('student');
       } else {
@@ -43,31 +68,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center p-4">
-      {/* Card with watermark */}
       <div className="relative bg-gray-50 rounded-3xl shadow-2xl w-full max-w-md p-10 overflow-hidden">
 
-        {/* Watermark logo in background */}
+        {/* Watermark */}
         <img
           src={OnlyLogo}
           alt="EduVerge watermark"
           className="pointer-events-none select-none absolute -top-10 -right-16 w-80 opacity-15 blur-[1px]"
         />
 
-        {/* Foreground content */}
         <div className="relative z-10">
+          {/* Header */}
           <div className="flex flex-col items-center mb-8">
-            {/* Small logo on top */}
             <div className="bg-primary-100 p-3 rectangle-full mb-4 shadow-sm">
-              <img
-                src={EduvergeLogo}
-                alt="EduVerge logo"
-                className="w-16 h-16 object-contain"
-              />
+              <img src={EduvergeLogo} alt="EduVerge logo" className="w-16 h-16 object-contain" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800">EduVerge</h1>
-            <p className="text-gray-600 mt-2">Smart Learning &amp; Assessment</p>
+            <p className="text-gray-600 mt-2">Smart Learning & Assessment</p>
           </div>
 
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div>
@@ -76,7 +96,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   type="text"
                   value={first_name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                  className="w-full px-4 py-2 border rounded-lg"
                   required
                   placeholder="Enter your full name"
                 />
@@ -89,7 +109,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                className="w-full px-4 py-2 border rounded-lg"
                 required
               />
             </div>
@@ -100,7 +120,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                className="w-full px-4 py-2 border rounded-lg"
                 required
                 minLength={6}
               />
@@ -112,7 +132,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as 'faculty' | 'student')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                  className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="student">Student</option>
                   <option value="faculty">Faculty</option>
@@ -121,7 +141,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             )}
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -129,26 +149,52 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-600 hover:bg-primary-700 text-blue-500 font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="w-full bg-primary-600 hover:bg-primary-700 text-blue-500 font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" >
               {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          {/* Switch */}
+          <div className="mt-5 text-center">
             <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setError('');
                 setName('');
-                // setEmail('');
-                // setPassword('');
               }}
-              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+              className="text-primary-600 text-sm font-medium"
             >
               {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
             </button>
           </div>
+
+          {/* ✅ Demo Credentials */}
+          <div className="mt-8 border-t pt-5">
+            <p className="text-sm text-gray-600 mb-3 text-center font-medium">
+              Demo Accounts
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {demoAccounts.map((demo) => (
+                <button
+                  key={demo.role}
+                  type="button"
+                  onClick={() => fillDemoCredentials(demo.email, demo.password)}
+                  className="border border-primary-300 rounded-lg px-3 py-2 text-sm hover:bg-primary-50"
+                >
+                  <div className="font-semibold">{demo.role}</div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {demo.email}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-400 mt-3 text-center">
+              Click any role to auto-fill credentials
+            </p>
+          </div>
+
         </div>
       </div>
     </div>
