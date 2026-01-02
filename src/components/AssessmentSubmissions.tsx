@@ -89,6 +89,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
     setEditScores((prev) => ({ ...prev, [submissionId]: value }));
   };
 
+  // ✅ FIXED: Now calculates and updates total_score
   const saveTheoryScore = async (submissionId: string) => {
     const score = Number(editScores[submissionId]);
     if (isNaN(score)) {
@@ -96,9 +97,50 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
       return;
     }
 
+    // Get the current submission
+    const submission = submissions.find((s) => s.id === submissionId);
+    if (!submission) {
+      toast.error('Submission not found');
+      return;
+    }
+
+    // ✅ Fetch assessment to get max marks
+    const { data: assessment, error: assessError } = await supabase
+      .from('assessments')
+      .select('id, total_marks, mcq_marks, theory_marks')
+      .eq('id', submission.assessment_id)
+      .single();
+
+    if (assessError || !assessment) {
+      console.error('Error fetching assessment:', assessError);
+      toast.error('Failed to fetch assessment details');
+      return;
+    }
+
+    // ✅ Calculate total_score based on MCQ + Theory (50-50 split)
+    const mcqMaxMarks = assessment.mcq_marks || 10;
+    const theoryMaxMarks = assessment.theory_marks || 10;
+
+    // MCQ percentage (0-50%)
+    const mcqPercentage = submission.mcq_score
+      ? (submission.mcq_score / mcqMaxMarks) * 50
+      : 0;
+
+    // Theory percentage (0-50%)
+    const theoryPercentage = score
+      ? (score / theoryMaxMarks) * 50
+      : 0;
+
+    // Total percentage (0-100%)
+    const totalScore = Math.round((mcqPercentage + theoryPercentage) * 100) / 100;
+
+    // ✅ Update BOTH theory_score AND total_score
     const { error } = await supabase
       .from('submissions')
-      .update({ theory_score: score })
+      .update({
+        theory_score: score,
+        total_score: totalScore, // ← THIS WAS MISSING BEFORE!
+      })
       .eq('id', submissionId);
 
     if (error) {
@@ -108,6 +150,14 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
     }
 
     toast.success('Score saved successfully!');
+    
+    // Clear the edit state
+    setEditScores((prev) => {
+      const newScores = { ...prev };
+      delete newScores[submissionId];
+      return newScores;
+    });
+
     fetchData(); // Refresh data
   };
 
@@ -147,9 +197,9 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
           ? new Date(sub.submitted_at).toLocaleString('en-IN')
           : '-',
         'MCQ Score': sub.mcq_score || 0,
-        'Total Score': sub.total_score || 0,
         'Theory Score': sub.theory_score || 0,
-         'Status': sub.theory_score === null ? 'Pending' : 'Graded',
+        'Total Score': sub.total_score || 0,
+        'Status': sub.theory_score === null ? 'Pending' : 'Graded',
       }));
 
       // Create Detailed Sheet Data
@@ -372,7 +422,9 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-600 text-sm">No theory questions in this assessment.</div>
+                    <div className="text-gray-600 text-sm">
+                      No theory questions in this assessment.
+                    </div>
                   )}
 
                   {/* Total Score */}
