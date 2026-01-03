@@ -1,14 +1,12 @@
+// src/components/AssessmentSubmissions.tsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { Question, Submission } from '../utils/supabaseClient';
-import { X, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { toast } from 'react-toastify';
+import { X } from 'lucide-react';
 
 interface SubmissionWithUser extends Submission {
   student_name?: string;
   student_email?: string;
-  assessment_title?: string;
 }
 
 interface AssessmentSubmissionsProps {
@@ -24,7 +22,6 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [editScores, setEditScores] = useState<Record<string, string>>({});
-  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -33,13 +30,6 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
 
   const fetchData = async () => {
     setLoading(true);
-
-    // Fetch assessment title
-    const { data: assessmentData } = await supabase
-      .from('assessments')
-      .select('title')
-      .eq('id', assessmentId)
-      .single();
 
     // Fetch submissions for this assessment
     const { data: subs, error: subsError } = await supabase
@@ -55,7 +45,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
 
     // Fetch student info for each submission
     const submissionsWithUsers: SubmissionWithUser[] = [];
-
+    
     if (subs) {
       for (const sub of subs) {
         const { data: userData } = await supabase
@@ -68,7 +58,6 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
           ...sub,
           student_name: userData?.full_name || 'Student',
           student_email: userData?.email || '-',
-          assessment_title: assessmentData?.title || 'Assessment',
         });
       }
     }
@@ -89,75 +78,25 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
     setEditScores((prev) => ({ ...prev, [submissionId]: value }));
   };
 
-  // ✅ FIXED: Now calculates and updates total_score
   const saveTheoryScore = async (submissionId: string) => {
     const score = Number(editScores[submissionId]);
     if (isNaN(score)) {
-      toast.error('Please enter a valid number');
+      alert('Please enter a valid number');
       return;
     }
 
-    // Get the current submission
-    const submission = submissions.find((s) => s.id === submissionId);
-    if (!submission) {
-      toast.error('Submission not found');
-      return;
-    }
-
-    // ✅ Fetch assessment to get max marks
-    const { data: assessment, error: assessError } = await supabase
-      .from('assessments')
-      .select('id, total_marks, mcq_marks, theory_marks')
-      .eq('id', submission.assessment_id)
-      .single();
-
-    if (assessError || !assessment) {
-      console.error('Error fetching assessment:', assessError);
-      toast.error('Failed to fetch assessment details');
-      return;
-    }
-
-    // ✅ Calculate total_score based on MCQ + Theory (50-50 split)
-    const mcqMaxMarks = assessment.mcq_marks || 10;
-    const theoryMaxMarks = assessment.theory_marks || 10;
-
-    // MCQ percentage (0-50%)
-    const mcqPercentage = submission.mcq_score
-      ? (submission.mcq_score / mcqMaxMarks) * 50
-      : 0;
-
-    // Theory percentage (0-50%)
-    const theoryPercentage = score
-      ? (score / theoryMaxMarks) * 50
-      : 0;
-
-    // Total percentage (0-100%)
-    const totalScore = Math.round((mcqPercentage + theoryPercentage) * 100) / 100;
-
-    // ✅ Update BOTH theory_score AND total_score
     const { error } = await supabase
       .from('submissions')
-      .update({
-        theory_score: score,
-        total_score: totalScore, // ← THIS WAS MISSING BEFORE!
-      })
+      .update({ theory_score: score })
       .eq('id', submissionId);
 
     if (error) {
       console.error('Error saving score:', error);
-      toast.error('Error saving score');
+      alert('Error saving score');
       return;
     }
 
-    toast.success('Score saved successfully!');
-    
-    // Clear the edit state
-    setEditScores((prev) => {
-      const newScores = { ...prev };
-      delete newScores[submissionId];
-      return newScores;
-    });
-
+    alert('Score saved successfully!');
     fetchData(); // Refresh data
   };
 
@@ -178,120 +117,6 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
     return getTheoryQuestions().reduce((sum, q) => sum + q.marks, 0);
   };
 
-  const downloadExcel = async () => {
-    if (submissions.length === 0) {
-      toast.warning('No submissions to export');
-      return;
-    }
-
-    setIsExporting(true);
-
-    try {
-      const assessmentTitle = submissions[0]?.assessment_title || 'Assessment';
-
-      // Create Summary Sheet Data
-      const summaryData = submissions.map((sub) => ({
-        'Student Name': sub.student_name || '-',
-        'Student Email': sub.student_email || '-',
-        'Submission Date': sub.submitted_at
-          ? new Date(sub.submitted_at).toLocaleString('en-IN')
-          : '-',
-        'MCQ Score': sub.mcq_score || 0,
-        'Theory Score': sub.theory_score || 0,
-        'Total Score': sub.total_score || 0,
-        'Status': sub.theory_score === null ? 'Pending' : 'Graded',
-      }));
-
-      // Create Detailed Sheet Data
-      const detailedData: any[] = [];
-
-      submissions.forEach((sub, idx) => {
-        // Add student header
-        detailedData.push({
-          'Student Name': sub.student_name,
-          'Email': sub.student_email,
-          'Submitted': sub.submitted_at
-            ? new Date(sub.submitted_at).toLocaleString('en-IN')
-            : '-',
-          'MCQ Score': sub.mcq_score || 0,
-          'Total Score': sub.total_score || 0,
-        });
-
-        // Add empty row
-        detailedData.push({});
-
-        // Add theory questions and answers
-        const theoryAnswers = getTheoryAnswers(sub);
-        if (theoryAnswers.length > 0) {
-          theoryAnswers.forEach((answer, qIdx) => {
-            detailedData.push({
-              'Question Number': `Q${qIdx + 1}`,
-              'Question': answer.questionText,
-              'Max Marks': answer.maxMarks,
-              'Student Answer': answer.studentAnswer,
-            });
-          });
-        } else {
-          detailedData.push({
-            'Question Number': 'N/A',
-            'Question': 'No theory questions in this assessment',
-          });
-        }
-
-        // Add separator
-        if (idx < submissions.length - 1) {
-          detailedData.push({});
-        }
-      });
-
-      // Create workbook
-      const wb = XLSX.utils.book_new();
-
-      // Add Summary Sheet
-      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-      summarySheet['!cols'] = [
-        { wch: 25 },
-        { wch: 30 },
-        { wch: 20 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 12 },
-      ];
-      XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
-
-      // Add Detailed Sheet
-      const detailedSheet = XLSX.utils.json_to_sheet(detailedData);
-      detailedSheet['!cols'] = [
-        { wch: 18 },
-        { wch: 50 },
-        { wch: 12 },
-        { wch: 40 },
-        { wch: 12 },
-      ];
-      XLSX.utils.book_append_sheet(wb, detailedSheet, 'Detailed Answers');
-
-      // Generate filename with assessment name and date
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `${assessmentTitle}_Submissions_${dateStr}.xlsx`;
-
-      // Save file
-      XLSX.writeFile(wb, filename);
-
-      toast.success(`Excel file "${filename}" downloaded successfully!`, {
-        position: 'top-right',
-        autoClose: 4000,
-      });
-    } catch (error) {
-      console.error('Error exporting Excel:', error);
-      toast.error('Failed to export Excel file', {
-        position: 'top-right',
-        autoClose: 4000,
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -303,32 +128,12 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
               {submissions.length} student{submissions.length !== 1 ? 's' : ''} submitted
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={downloadExcel}
-              disabled={isExporting || submissions.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Download submissions as Excel"
-            >
-              {isExporting ? (
-                <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Download Excel
-                </>
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Content */}
@@ -422,9 +227,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-600 text-sm">
-                      No theory questions in this assessment.
-                    </div>
+                    <div className="text-gray-600 text-sm">No theory questions in this assessment.</div>
                   )}
 
                   {/* Total Score */}

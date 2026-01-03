@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { Search } from 'lucide-react'
+import { Code2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import {
@@ -19,6 +21,8 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
 
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all')
   const [filterLanguage, setFilterLanguage] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>('')
+
 
   useEffect(() => {
     fetchQuestions()
@@ -61,23 +65,47 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
   const handleSelectQuestion = (question: CodingQuestion) => {
     navigate(`/coding-lab/${question.id}`) // ✅ ROUTE-BASED
   }
+  {/* Search Bar */}
+
 
   /* ================= FILTER ================= */
   const filteredQuestions = questions.filter(q => {
-    if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty) return false
-    if (
-      filterLanguage !== 'all' &&
-      q.programming_language.toLowerCase() !== filterLanguage.toLowerCase()
-    )
-      return false
-    return true
-  })
+  // Difficulty filter
+  if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty)
+    return false
+
+  // Language filter
+  if (
+    filterLanguage !== 'all' &&
+    q.programming_language.toLowerCase() !== filterLanguage.toLowerCase()
+  )
+    return false
+
+  // Search filter (title)
+  if (
+    searchQuery.trim() !== '' &&
+    !q.title.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+    return false
+
+  return true
+})
+
 
   /* ================= RENDER ================= */
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">📝 Coding Practice Lab</h1>
+        <div className="flex items-center gap-3 mb-6">
+  <div className="p-2 rounded-lg bg-blue-100">
+    <Code2 className="text-blue-600" size={26} />
+  </div>
+
+  <h1 className="text-3xl font-semibold tracking-tight text-gray-800">
+    Coding Practice Lab
+  </h1>
+</div>
+
 
         {error && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -89,6 +117,24 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
           <h2 className="text-lg font-bold mb-4">
             Problems ({filteredQuestions.length})
           </h2>
+{/* Search Bar */}
+<div className="mb-4 relative">
+  <Search
+    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+    size={18}
+  />
+
+  <input
+    type="text"
+    placeholder="Search problems by title"
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="w-full pl-10 pr-3 py-3 border rounded 
+               focus:outline-none focus:ring-2 focus:ring-blue-400"
+  />
+</div>
+
+
 
           {/* Filters */}
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -103,6 +149,7 @@ const StudentCodingLabPage: React.FC<StudentCodingLabPageProps> = ({ user }) => 
               <option value="hard">Hard</option>
             </select>
 
+            
             <select
               value={filterLanguage}
               onChange={(e) => setFilterLanguage(e.target.value)}
