@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import logo from '../assets/onlylogo.jpeg'
 import {
   BookOpen,
   LogOut,
@@ -81,9 +82,9 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         aria-label={isOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={isOpen}
         className="md:hidden fixed top-4 left-4 z-50 p-2
-        bg-gradient-to-r 
+        bg-gradient-to-r from-orange-200 to-purple-200
         text-gray-600 rounded-xl shadow-md
-        hover:from-purple-200 hover:to-orange-200
+        hover:from-purple-400 hover:to-orange-400
         transition-all duration-300"
       >
         {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -102,9 +103,15 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         {/* Header */}
         <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
+           <div className="w-9 h-8 bg-blue-300 rounded-lg flex items-center justify-center overflow-hidden">
+  <img
+    src={logo}
+    alt="EduVerge logo"
+    className="w-11 h-11 object-contain"
+  />
+</div>
+
+
             <h1 className="text-xl font-bold text-gray-800">EduVerge</h1>
           </div>
           <p className="text-sm font-medium text-gray-800">
