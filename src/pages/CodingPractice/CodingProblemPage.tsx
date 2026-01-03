@@ -22,22 +22,22 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
   const [submissions, setSubmissions] = useState<CodingSubmission[]>([])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('python')
-
   const [submitting, setSubmitting] = useState(false)
-  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [lastRunResult, setLastRunResult] = useState<ExecutionResult | null>(null)
 
-  /* MODAL */
+  /* 🔹 MODAL STATE (UNCHANGED) */
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedSubmission, setSelectedSubmission] =
     useState<CodingSubmission | null>(null)
   const [isLoadingSubmission, setIsLoadingSubmission] = useState(false)
 
-  /* MOBILE */
+  /* 🔹 MOBILE TAB STATE */
   const [activeTab, setActiveTab] = useState<'problem' | 'code'>('problem')
+
   const isMobile = window.innerWidth < 768
 
-  /* ================= FETCH ================= */
+  /* ================= FETCH DATA ================= */
   useEffect(() => {
     if (!problemId) return
     fetchQuestion(problemId)
@@ -73,33 +73,29 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
   /* ================= RUN COMPLETE ================= */
   const handleRunComplete = (result: ExecutionResult) => {
     setLastRunResult(result)
-    setSubmissionError(null) // 🔑 clear only submission-level errors
+
+    if (result.status === 'success') setError(null)
+    else if (result.status === 'test_failed')
+      setError('❌ Test failed. Please review your code.')
+    else if (result.status === 'error')
+      setError('❌ Compilation/runtime error.')
   }
 
   /* ================= SUBMIT ================= */
   const handleSubmitCode = async () => {
-    if (!question) return
-
-    if (!code.trim()) {
-      setSubmissionError('⚠️ Please write code before submitting.')
+    if (!question || !code.trim()) {
+      setError('Please write some code first')
       return
     }
 
-    if (!lastRunResult) {
-      setSubmissionError('⚠️ Please run your code before submitting.')
-      return
-    }
-
-    if (lastRunResult.status !== 'success') {
-      setSubmissionError(
-        '❌ Fix code errors and ensure all tests pass before submission.'
-      )
+    if (!lastRunResult || lastRunResult.status !== 'success') {
+      setError('❌ Your code must pass all tests before submission.')
       return
     }
 
     try {
       setSubmitting(true)
-      setSubmissionError(null)
+      setError(null)
 
       const submission = await executeAndSaveCode(
         question.id,
@@ -111,7 +107,7 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
       await fetchSubmissions()
       navigate(`/submission/${submission.id}`)
     } catch (err: any) {
-      setSubmissionError(err.message || 'Submission failed')
+      setError(err.message || 'Submission failed')
     } finally {
       setSubmitting(false)
     }
@@ -207,30 +203,49 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
         </div>
       )}
 
-      {/* MAIN */}
+      {/* MAIN CONTENT */}
       <div className="flex flex-1 overflow-hidden">
-        {/* LEFT */}
+        {/* LEFT PANEL */}
         {(!isMobile || activeTab === 'problem') && (
-          <div className="w-full md:w-2/5 p-6 bg-white border-r overflow-y-auto">
+          <div className="w-full md:w-2/5 overflow-y-auto p-6 bg-white border-r">
             <h2 className="font-bold text-xl mb-4">Problem Description</h2>
             <p className="whitespace-pre-wrap">{question.description}</p>
+
+            <div className="mt-6">
+              <h3 className="font-semibold">Sample Test Cases</h3>
+
+              {[1, 2].map(i => {
+                const input = question[`sample_input${i === 1 ? '' : '2'}` as keyof CodingQuestion]
+                const output = question[`sample_output${i === 1 ? '' : '2'}` as keyof CodingQuestion]
+                if (!input || !output) return null
+
+                return (
+                  <div key={i} className="mt-4 border rounded p-3 bg-gray-50">
+                    <p className="font-semibold mb-1">Sample Test Case {i}</p>
+                    <pre className="bg-white p-2 mb-2">{input}</pre>
+                    <pre className="bg-white p-2">{output}</pre>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
-        {/* RIGHT */}
+        {/* RIGHT PANEL */}
         {(!isMobile || activeTab === 'code') && (
-          <div className="w-full md:w-3/5 p-6 overflow-y-auto">
+          <div className="w-full md:w-3/5 overflow-y-auto p-6">
             <CodeEditor
               question={question}
+              user={user}
               code={code}
               setCode={setCode}
               language={language}
               onRunComplete={handleRunComplete}
             />
 
-            {submissionError && (
+            {error && (
               <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {submissionError}
+                {error}
               </div>
             )}
 
@@ -250,6 +265,7 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
         )}
       </div>
 
+      {/* SUBMISSION MODAL */}
       <SubmissionDetailModal
         submission={selectedSubmission}
         question={question}

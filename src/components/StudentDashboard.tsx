@@ -6,7 +6,8 @@ import NavigationSidebar from './NavigationSidebar';
 import TestInstructions from './TestInstructions';
 import { BookOpen, Clock, CheckCircle, PlayCircle, Sparkles, Code2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import img from '../assets/codingPic.jpg';
+import ailog from '../assets/aiCard.jpg';
 
 interface StudentDashboardProps {
   user: User;
@@ -113,34 +114,104 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
 
 
         {/* ===== NEW: Coding Lab Quick Access Card ===== */}
-        <div className="mb-6 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Code2 className="w-6 h-6" />
-                <h3 className="text-xl font-bold">Coding Practice Lab</h3>
-              </div>
-              <p className="text-blue-100 mb-4">
-                Solve coding problems, practice your programming skills, and track your progress
-              </p>
-              <button
-                onClick={() => navigate('/coding-lab')}
-                className="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
-              >
-                Start Coding
-              </button>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
-                <Code2 className="w-12 h-12" />
-              </div>
-            </div>
+        <div
+  className="mb-5 relative rounded-xl overflow-hidden shadow-md"
+  style={{
+    backgroundImage: `url(${img})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }}
+>
+  {/* Overlay */}
+  <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-blue-800/60 to-cyan-700/40" />
+
+  {/* Content */}
+  <div className="relative z-10 px-5 py-4 text-white">
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur">
+            <Code2 className="w-5 h-5" />
           </div>
+          <h3 className="text-lg font-semibold">
+            Coding Practice Lab
+          </h3>
         </div>
+
+        <p className="text-sm text-blue-100 mb-3 max-w-md">
+          Practice coding. Improve logic. Track progress.
+        </p>
+
+        <button
+          onClick={() => navigate('/coding-lab')}
+          className="bg-white text-blue-700 px-4 py-1.5 rounded-md text-sm font-medium
+                     hover:bg-blue-50 transition-colors"
+        >
+          Start Coding
+        </button>
+      </div>
+
+      <div className="hidden md:flex items-center justify-center">
+        <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur">
+          <Code2 className="w-7 h-7" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
         {/* AI Assistant Quick Access Card */}
-        <div className="mb-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white shadow-lg">
+            <div
+  className="mb-5 relative rounded-xl overflow-hidden shadow-md"
+  style={{
+    backgroundImage: `url(${ailog})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }}
+>
+  {/* Overlay */}
+  <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-purple-800/60 to-pink-700/40" />
+
+  {/* Content */}
+  <div className="relative z-10 px-5 py-4 text-white">
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <h3 className="text-lg font-semibold">
+            AI Learning Assistant
+          </h3>
+        </div>
+
+        <p className="text-sm text-purple-100 mb-3 max-w-md">
+          Get instant help with your studies, assignments, and exam preparation.
+        </p>
+
+        <button
+          onClick={() => navigate('/ai-assistant')}
+          className="bg-white text-purple-700 px-4 py-1.5 rounded-md text-sm font-medium
+                     hover:bg-purple-100 transition-colors"
+        >
+          Start Chat
+        </button>
+      </div>
+
+      {/* Right Icon */}
+      <div className="hidden md:flex items-center justify-center">
+        <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur">
+          <Sparkles className="w-7 h-7" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+        {/* <div className="mb-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
@@ -163,7 +234,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
 
         {/* Stats Cards */}
