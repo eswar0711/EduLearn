@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
+import PremiumLoader from '../../layouts/PremiumLoader';
 
 //import NavigationSidebar from '../NavigationSidebar';
 import {
@@ -396,7 +397,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
       <div className="flex">
         {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+          <PremiumLoader message="Loading users..." />
         </div>
       </div>
     );

@@ -32,7 +32,9 @@ const UserProfile: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <PremiumLoader message="Loading profile..." />
+        
+<PremiumLoader message="Loading..." fullHeight={false} />
+
       </div>
     );
   }

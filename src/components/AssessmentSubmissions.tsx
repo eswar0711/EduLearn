@@ -2,7 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { Question, Submission } from '../utils/supabaseClient';
+
 import { X } from 'lucide-react';
+import PremiumLoader from '../layouts/PremiumLoader';
+
 
 interface SubmissionWithUser extends Submission {
   student_name?: string;
@@ -139,7 +142,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="text-center py-8 text-gray-600">Loading submissions...</div>
+            <PremiumLoader message="Loading submissions..." />
           ) : submissions.length === 0 ? (
             <div className="text-center py-8 text-gray-600">
               No submissions yet for this assessment.

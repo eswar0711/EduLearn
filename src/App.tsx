@@ -37,6 +37,7 @@ import AdminCodingAnalytics from './pages/CodingPractice/AdminCodingAnalytics';
 import SubmissionView from './pages/CodingPractice/SubmissionView';
 import ResultsSummary from './components/ResultsSummary';
 import SessionLockGuard from './components/SessionLockGuard';
+import { ToastContainer } from 'react-toastify';
 
 const convertAuthUserToComponentUser = (authUser: AuthUser): any => ({
   id: authUser.id,
@@ -79,6 +80,7 @@ const App: React.FC = () => {
   const componentUser = user ? convertAuthUserToComponentUser(user) : null;
 
   return (
+
     <Router
       future={{
         v7_startTransition: true,
@@ -359,6 +361,7 @@ const App: React.FC = () => {
         {/* CATCH-ALL */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+          <ToastContainer position="bottom-right" autoClose={2000} />
     </Router>
   );
 };

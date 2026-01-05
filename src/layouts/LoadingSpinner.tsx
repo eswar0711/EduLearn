@@ -19,11 +19,11 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <div
       className={`flex flex-col items-center justify-center ${
-        fullHeight ? 'min-h-screen' : 'min-h-96'
+        fullHeight ? 'min-h-screen' : 'min-h-86'
       } bg-gray-50`}
     >
       {/* Animated spinner */}
-      <div className="relative w-14 h-14 mb-6">
+      <div className="relative w-10 h-10 mb-6">
         {/* Outer ring */}
         <div
           className="absolute inset-0 rounded-full border-4 border-gray-200"
@@ -41,11 +41,11 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         />
 
         {/* Center dot */}
-        <div className="absolute inset-2 rounded-full border-2 border-blue-300 opacity-50" />
+        {/* <div className="absolute inset-2 rounded-full border-2 border-blue-300 opacity-50" /> */}
       </div>
 
       {/* Loading text */}
-      <p className="text-lg font-medium text-gray-700 mb-2">{message}</p>
+      <p className="text-base font-medium text-gray-700 mb-2">{message}</p>
       <p className="text-sm text-gray-500">Please wait...</p>
 
       {/* Animated dots */}

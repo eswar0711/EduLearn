@@ -1,6 +1,7 @@
 import React, { useState,} from 'react'
 import Editor from '@monaco-editor/react'
 import { CodingSubmission, CodingQuestion } from '../../utils/codingLabService'
+import { toast } from 'react-toastify'
 
 interface SubmissionDetailModalProps {
   submission: CodingSubmission | null
@@ -145,14 +146,19 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
 
                 {/* Copy Button */}
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(submission.code)
-                    alert('Code copied to clipboard!')
-                  }}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  📋 Copy Code
-                </button>
+  onClick={() => {
+    navigator.clipboard.writeText(submission.code)
+      .then(() => {
+        toast.success('Code copied to clipboard!')
+      })
+      .catch(() => {
+        toast.error('Failed to copy code')
+      })
+  }}
+  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+>
+  📋 Copy Code
+</button>
               </div>
             )}
 
@@ -215,7 +221,7 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                 </div>
 
                 {/* Copy Output Button */}
-                <button
+                {/* <button
                   onClick={() => {
                     navigator.clipboard.writeText(submission.output || '')
                     alert('Output copied to clipboard!')
@@ -223,7 +229,7 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                 >
                   📋 Copy Output
-                </button>
+                </button> */}
               </div>
             )}
           </div>

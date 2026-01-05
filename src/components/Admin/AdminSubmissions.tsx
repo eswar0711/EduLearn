@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
 //import NavigationSidebar from '../NavigationSidebar';
+import PremiumLoader from '../../layouts/PremiumLoader';
 import {
   Download,
   Search,
@@ -277,7 +278,7 @@ const AdminSubmissions: React.FC<AdminSubmissionsProps> = () => {
       <div className="flex">
         {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading submissions...</div>
+          <PremiumLoader message="Loading submissions..." />
         </div>
       </div>
     );

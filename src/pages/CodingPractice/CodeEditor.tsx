@@ -10,8 +10,10 @@ import {
   CheckCircle,
   AlertCircle,
   Play,
+  XCircle
   //Upload
 } from 'lucide-react'
+
 
 
 
@@ -211,7 +213,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             ) : (
               <AlertCircle className="text-red-600" size={20} />
             )}
-            {result.status === 'success' ? '✅ All Tests Passed!' : '❌ Tests Failed'}
+            {result.status === 'success' ? ' All Tests Passed!' : 'Tests Failed'}
           </h3>
 
 
@@ -229,28 +231,47 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           {/* ===== SAMPLE TEST RESULTS (COMPACT TABBED VIEW!) ===== */}
           <div className="mb-6">
             <h4 className="font-semibold mb-3 text-blue-800 flex items-center gap-2">
-              <span className="inline-block w-5 h-5 bg-blue-200 rounded-full flex items-center justify-center text-xs font-bold">S</span>
+              <span className=" w-5 h-5 bg-blue-200 rounded-full flex items-center justify-center text-xs font-bold">S</span>
               Sample Tests
             </h4>
 
             {result.sampleTestResults && result.sampleTestResults.length > 0 ? (
               <div>
                 {/* Tab Buttons */}
-                <div className="flex gap-2 mb-4 flex-wrap">
-                  {result.sampleTestResults.map((test, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedTestTab(idx)}
-                      className={`px-4 py-2 rounded text-sm font-semibold transition-all ${
-                        selectedTestTab === idx
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      {test.passed ? '✅' : '❌'} Case {test.index}
-                    </button>
-                  ))}
-                </div>
+      <div className="flex gap-2 mb-4 flex-wrap">
+  {result.sampleTestResults.map((test, idx) => {
+    const isActive = selectedTestTab === idx;
+
+    return (
+      <button
+        key={idx}
+        onClick={() => setSelectedTestTab(idx)}
+        className={`px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2 ${
+          isActive
+            ? 'bg-blue-500 text-white shadow-md'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+        }`}
+      >
+        {test.passed ? (
+          <CheckCircle
+            className={`w-4 h-4 ${
+              isActive ? 'text-white' : 'text-green-600'
+            }`}
+          />
+        ) : (
+          <XCircle
+            className={`w-4 h-4 ${
+              isActive ? 'text-white' : 'text-red-600'
+            }`}
+          />
+        )}
+        Case {test.index}
+      </button>
+    );
+  })}
+</div>
+
+
 
                 {/* Tab Content */}
                 {result.sampleTestResults[selectedTestTab] && (
@@ -314,7 +335,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           {result.hiddenTestsResult && (
             <div className="mb-6 border-t pt-6">
               <h4 className="font-semibold mb-3 text-purple-800 flex items-center gap-2">
-                <span className="inline-block w-5 h-5 bg-purple-200 rounded-full flex items-center justify-center text-xs font-bold">H</span>
+                <span className="w-5 h-5 bg-purple-200 rounded-full flex items-center justify-center text-xs font-bold">H</span>
                 Hidden Tests
               </h4>
 
