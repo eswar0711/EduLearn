@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Question } from '../utils/supabaseClient';
 import { autoGradeMCQ } from '../utils/autoGrading';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import ConfirmationModal from './ConfirmationModal';
 import QuestionDisplay from '../components/TestManager/QuestionDisplay';
 import {
@@ -512,7 +512,7 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="text-lg text-gray-600">Loading test...</div>
         </div>
@@ -524,7 +524,7 @@ useEffect(() => {
   if (error) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
             <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
@@ -547,7 +547,7 @@ useEffect(() => {
   if (!assessment || !testSession) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="text-lg text-red-600">Assessment not found</div>
         </div>
@@ -559,7 +559,7 @@ useEffect(() => {
   if (isTimeExpired) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
             <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
@@ -586,7 +586,7 @@ useEffect(() => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
 
       <div className="flex-1 flex flex-col">

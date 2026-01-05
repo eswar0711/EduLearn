@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
 
-import NavigationSidebar from '../NavigationSidebar';
+//import NavigationSidebar from '../NavigationSidebar';
 import {
   Trash2,
   Lock,
@@ -33,7 +33,7 @@ interface AddUserForm {
   role: 'student' | 'faculty';
 }
 
-const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ user }) => {
+const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -394,7 +394,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-lg text-gray-600">Loading...</div>
         </div>
@@ -419,7 +419,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="mb-8 flex justify-between items-start">

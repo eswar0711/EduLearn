@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabaseClient';
 import type { User } from '../../utils/supabaseClient';
 import { User as UserIcon, Mail, Briefcase, Calendar, ArrowLeft } from 'lucide-react';
-
+import PremiumLoader from '../../layouts/PremiumLoader';
 const UserProfile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ const UserProfile: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-600">Loading profile...</div>
+        <PremiumLoader message="Loading profile..." />
       </div>
     );
   }

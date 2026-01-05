@@ -5,7 +5,7 @@ import type { User } from '../utils/supabaseClient';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import BulkUploadModal from './BulkUploadModal';
 import { PlusCircle, Trash2, Save, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -173,7 +173,7 @@ const AssessmentCreation: React.FC<AssessmentCreationProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       {/* Toast Container - renders all notifications */}
       <ToastContainer

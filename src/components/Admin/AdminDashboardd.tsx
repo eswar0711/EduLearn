@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
 import type { User } from '../../utils/supabaseClient';
-import NavigationSidebar from '../NavigationSidebar';
+//import NavigationSidebar from '../NavigationSidebar';
+import LoadingSpinner from '../../layouts/LoadingSpinner';
+
 import {
   Users,
   BookOpen,
@@ -28,7 +30,7 @@ interface DashboardStats {
   blockedUsers: number;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -116,19 +118,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   };
 
   if (loading) {
-    return (
-      <div className="flex">
-        <NavigationSidebar user={user} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  return <LoadingSpinner message="Loading dashboard..." />;
+}
+
+
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="mb-8">

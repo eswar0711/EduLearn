@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Assessment, Submission } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import { FileText, Users, TrendingUp, Code2, Trash2, AlertCircle } from 'lucide-react';
 import AssessmentSubmissions from './AssessmentSubmissions';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import LoadingSpinner from '../layouts/LoadingSpinner';
 
 interface FacultyDashboardProps {
   user: User;
@@ -160,9 +161,9 @@ const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+          <LoadingSpinner message="Loading dashboard..." />
         </div>
       </div>
     );
@@ -170,7 +171,7 @@ const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="mb-8">

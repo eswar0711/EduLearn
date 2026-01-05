@@ -1,60 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
 import { getCurrentUser } from './utils/auth';
 import type { AuthUser } from './utils/auth';
-import CodingProblemPage from './pages/CodingPractice/CodingProblemPage'
 
 
-// Pages
+import DashboardLayout from './layouts/DashboardLayout';
+
+// Pages / Components (same imports as you have)
 import LoginPage from './pages/LoginPage';
-
-// Components - Faculty
+import CodingProblemPage from './pages/CodingPractice/CodingProblemPage';
 import FacultyDashboard from './components/FacultyDashboard';
 import AssessmentCreation from './components/AssessmentCreation';
 import FacultyCourseMaterials from './components/FacultyCourseMaterials';
-
-// Components - Student
 import StudentDashboard from './components/StudentDashboard';
 import TestTaking from './components/TestTaking';
 import ResultsPage from './components/ResultsPage';
 import CoursePage from './components/CoursePage';
 import ScoreCalculatorModule from './components/ScoreCalculator/ScoreCalculatorModule';
 import AIAssistantModule from './components/AIAssistant/AIAssistantModule';
-
-// Components - User Settings
 import {
   ChangePassword,
   UserProfile as UserProfileComponent,
 } from './components/UserSettings';
-
-// Components - Admin
 import AdminDashboard from './components/Admin/AdminDashboardd';
 import AdminUserManagement from './components/Admin/AdminUserManagement';
 import AdminAnalytics from './components/Admin/AdminAnalytics';
 import AdminSubmissions from './components/Admin/AdminSubmissions';
-
-// Coding Practice Lab
 import StudentCodingLabPage from './pages/CodingPractice/StudentCodingLabPage';
 import FacultyCodingManagement from './pages/CodingPractice/FacultyCodingManagement';
 import AdminCodingAnalytics from './pages/CodingPractice/AdminCodingAnalytics';
 import SubmissionView from './pages/CodingPractice/SubmissionView';
-
-// Test Results Pages
 import ResultsSummary from './components/ResultsSummary';
 import SessionLockGuard from './components/SessionLockGuard';
 
-// Type conversion utility
-const convertAuthUserToComponentUser = (authUser: AuthUser): any => {
-  return {
-    id: authUser.id,
-    email: authUser.email,
-    full_name: authUser.full_name,
-    role: authUser.role,
-    is_blocked: authUser.is_blocked,
-    is_active: authUser.is_active,
-    created_at: authUser.created_at,
-  };
-};
+const convertAuthUserToComponentUser = (authUser: AuthUser): any => ({
+  id: authUser.id,
+  email: authUser.email,
+  full_name: authUser.full_name,
+  role: authUser.role,
+  is_blocked: authUser.is_blocked,
+  is_active: authUser.is_active,
+  created_at: authUser.created_at,
+});
 
 const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -87,20 +79,27 @@ const App: React.FC = () => {
   const componentUser = user ? convertAuthUserToComponentUser(user) : null;
 
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Routes>
-        {/* ===== LOGIN ===== */}
+        {/* LOGIN (no layout) */}
         <Route
           path="/login"
           element={!user ? <LoginPage onLogin={checkUser} /> : <Navigate to="/" />}
         />
 
-        {/* ===== ADMIN ===== */}
+        {/* ADMIN routes (with layout) */}
         <Route
           path="/admin"
           element={
             user && user.role === 'admin' ? (
-              <AdminDashboard user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <AdminDashboard user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -110,7 +109,9 @@ const App: React.FC = () => {
           path="/admin/users"
           element={
             user && user.role === 'admin' ? (
-              <AdminUserManagement user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <AdminUserManagement user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -120,7 +121,9 @@ const App: React.FC = () => {
           path="/admin/analytics"
           element={
             user && user.role === 'admin' ? (
-              <AdminAnalytics user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <AdminAnalytics user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -130,7 +133,9 @@ const App: React.FC = () => {
           path="/admin/submissions"
           element={
             user && user.role === 'admin' ? (
-              <AdminSubmissions user={user} />
+              <DashboardLayout user={componentUser}>
+                <AdminSubmissions user={user} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -140,44 +145,47 @@ const App: React.FC = () => {
           path="/admin/coding-analytics"
           element={
             user && user.role === 'admin' ? (
-              <AdminCodingAnalytics />
+              <DashboardLayout user={componentUser}>
+                <AdminCodingAnalytics />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
 
-        {/* ===== CODING PRACTICE LAB ===== */}
+        {/* CODING PRACTICE LAB (student / faculty) */}
         <Route
           path="/coding-lab"
           element={
             user && user.role === 'student' ? (
-              <StudentCodingLabPage user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <StudentCodingLabPage user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
-
         <Route
-  path="/coding-lab/:problemId"
-  element={
-    user && user.role === 'student' ? (
-      <CodingProblemPage user={componentUser} />
-    ) : (
-      <Navigate to="/login" />
-    )
-  }
-/>
-
-
-
-
+          path="/coding-lab/:problemId"
+          element={
+            user && user.role === 'student' ? (
+              <DashboardLayout user={componentUser}>
+                <CodingProblemPage user={componentUser} />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
         <Route
           path="/coding-management"
           element={
             user && user.role === 'faculty' ? (
-              <FacultyCodingManagement user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <FacultyCodingManagement user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -185,20 +193,32 @@ const App: React.FC = () => {
         />
         <Route
           path="/submission/:id"
-          element={user ? <SubmissionView /> : <Navigate to="/login" />}
+          element={
+            user ? (
+              <DashboardLayout user={componentUser!}>
+                <SubmissionView />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
 
-        {/* ===== MAIN DASHBOARD ===== */}
+        {/* MAIN DASHBOARD (role-based) */}
         <Route
           path="/"
           element={
             user ? (
               user.role === 'faculty' ? (
-                <FacultyDashboard user={componentUser} />
+                <DashboardLayout user={componentUser}>
+                  <FacultyDashboard user={componentUser} />
+                </DashboardLayout>
               ) : user.role === 'admin' ? (
                 <Navigate to="/admin" />
               ) : (
-                <StudentDashboard user={componentUser} />
+                <DashboardLayout user={componentUser}>
+                  <StudentDashboard user={componentUser} />
+                </DashboardLayout>
               )
             ) : (
               <Navigate to="/login" />
@@ -206,12 +226,14 @@ const App: React.FC = () => {
           }
         />
 
-        {/* ===== FACULTY ===== */}
+        {/* FACULTY */}
         <Route
           path="/create-assessment"
           element={
             user && user.role === 'faculty' ? (
-              <AssessmentCreation user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <AssessmentCreation user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -221,33 +243,37 @@ const App: React.FC = () => {
           path="/course-materials"
           element={
             user && user.role === 'faculty' ? (
-              <FacultyCourseMaterials user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <FacultyCourseMaterials user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
 
-        {/* ===== STUDENT ===== */}
-        {/* 🔒 TEST TAKING - PROTECTED WITH SESSION LOCK GUARD */}
+        {/* STUDENT */}
         <Route
           path="/take-test/:assessmentId"
           element={
             user && user.role === 'student' ? (
-              <SessionLockGuard>
-                <TestTaking user={componentUser} />
-              </SessionLockGuard>
+              <DashboardLayout user={componentUser}>
+                <SessionLockGuard>
+                  <TestTaking user={componentUser} />
+                </SessionLockGuard>
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
-
         <Route
           path="/courses"
           element={
             user && user.role === 'student' ? (
-              <CoursePage user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <CoursePage user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -257,7 +283,9 @@ const App: React.FC = () => {
           path="/ai-assistant"
           element={
             user && user.role === 'student' ? (
-              <AIAssistantModule user={componentUser} />
+              <DashboardLayout user={componentUser}>
+                <AIAssistantModule user={componentUser} />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -267,41 +295,68 @@ const App: React.FC = () => {
           path="/score-calculator"
           element={
             user && user.role === 'student' ? (
-              <ScoreCalculatorModule />
+              <DashboardLayout user={componentUser}>
+                <ScoreCalculatorModule />
+              </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
           }
         />
 
-        {/* ===== RESULTS PAGES ===== */}
-        {/* 📊 DETAILED RESULTS - Accessible from Dashboard after submission */}
+        {/* RESULTS */}
         <Route
           path="/results/:submissionId"
           element={
-            user ? <ResultsPage user={componentUser} /> : <Navigate to="/login" />
+            user ? (
+              <DashboardLayout user={componentUser!}>
+                <ResultsPage user={componentUser} />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
-
-        {/* ✨ SUMMARY RESULTS - Shown immediately after submission (PASS/FAIL only) */}
         <Route
           path="/results-summary/:submissionId"
           element={
-            user ? <ResultsSummary user={componentUser} /> : <Navigate to="/login" />
+            user ? (
+              <DashboardLayout user={componentUser!}>
+                <ResultsSummary user={componentUser} />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
 
-        {/* ===== USER SETTINGS ===== */}
+        {/* USER SETTINGS */}
         <Route
           path="/profile"
-          element={user ? <UserProfileComponent /> : <Navigate to="/login" />}
+          element={
+            user ? (
+              <DashboardLayout user={componentUser!}>
+                <UserProfileComponent />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
         <Route
           path="/change-password"
-          element={user ? <ChangePassword /> : <Navigate to="/login" />}
+          element={
+            user ? (
+              <DashboardLayout user={componentUser!}>
+                <ChangePassword />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
 
-        {/* ===== CATCH-ALL ===== */}
+        {/* CATCH-ALL */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

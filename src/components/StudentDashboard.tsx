@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Assessment, Submission } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import TestInstructions from './TestInstructions';
 import { BookOpen, Clock, CheckCircle, PlayCircle, Sparkles, Code2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import img from '../assets/codingPic.jpg';
 import ailog from '../assets/aiCard.jpg';
+import LoadingSpinner from '../layouts/LoadingSpinner';
+//import PremiumLoader from '../layouts/PremiumLoader';
 
 interface StudentDashboardProps {
   user: User;
@@ -106,17 +108,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+          <LoadingSpinner message="Loading dashboard..." />
         </div>
       </div>
     );
   }
+        
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="mb-8">

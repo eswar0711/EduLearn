@@ -3,14 +3,16 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Assessment, Question, Submission } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import { CheckCircle, XCircle, Clock, Home } from 'lucide-react';
+//import LoadingSpinner from '../layouts/PremiumLoader';
+import PremiumLoader from '../layouts/PremiumLoader';
 
 interface ResultsPageProps {
   user: User;
 }
 
-const ResultsPage: React.FC<ResultsPageProps> = ({ user }) => {
+const ResultsPage: React.FC<ResultsPageProps> = () => {
   const { submissionId } = useParams<{ submissionId: string }>();
   const navigate = useNavigate();
 
@@ -72,9 +74,9 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading results...</div>
+           <PremiumLoader message="Loading results..." />;
         </div>
       </div>
     );
@@ -83,7 +85,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ user }) => {
   if (!submission || !assessment) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-lg text-red-600">Results not found</div>
         </div>
@@ -97,7 +99,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">

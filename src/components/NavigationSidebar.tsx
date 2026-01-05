@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import logo from '../assets/onlylogo.jpeg'
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import logo from '../assets/onlylogo.jpeg';
 import {
   BookOpen,
   LogOut,
@@ -16,47 +16,45 @@ import {
   Code2,
   Menu,
   X,
-} from 'lucide-react'
-import { signOut } from '../utils/auth'
-import type { User } from '../utils/supabaseClient'
+} from 'lucide-react';
+import { signOut } from '../utils/auth';
+import type { User } from '../utils/supabaseClient';
 
 interface NavigationSidebarProps {
-  user: User
+  user: User;
 }
 
 interface NavItemProps {
-  to: string
-  icon: React.ReactNode
-  label: string
+  to: string;
+  icon: React.ReactNode;
+  label: string;
 }
 
 const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
-  // ✅ ESC closes sidebar (same as reference)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false)
-    }
-    document.addEventListener('keydown', handleEsc)
-    return () => document.removeEventListener('keydown', handleEsc)
-  }, [])
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, []);
 
   const handleSignOut = async () => {
     try {
-      await signOut()
-      navigate('/login')
-      window.location.reload()
+      await signOut();
+      navigate('/login');
+      window.location.reload();
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('Error signing out:', error);
     }
-  }
+  };
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => location.pathname === path;
 
-  // 🔁 EXACT NavItem pattern from reference
   const NavItem: React.FC<NavItemProps> = ({ to, icon, label }) => (
     <Link
       to={to}
@@ -72,11 +70,11 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
       {icon}
       <span>{label}</span>
     </Link>
-  )
+  );
 
   return (
     <>
-      {/* 📱 Mobile Menu Button (REFERENCE STYLE) */}
+      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close menu' : 'Open menu'}
@@ -87,7 +85,6 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         hover:from-purple-200 hover:to-orange-100
         transition-all duration-300"
       >
-        {/* from-orange-200 to-purple-200 */}
         {isOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
@@ -99,20 +96,19 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         border-r border-gray-200 shadow-sm z-40
         transform transition-transform duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        md:translate-x-0`}
+        md:translate-x-0
+        flex flex-col overflow-hidden`}   // <- key layout change
       >
-        {/* Header */}
-        <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+        {/* Header (fixed) */}
+        <div className="flex-shrink-0 p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center gap-2 mb-3">
-           <div className="w-9 h-8 bg-blue-300 rounded-lg flex items-center justify-center overflow-hidden">
-  <img
-    src={logo}
-    alt="EduVerge logo"
-    className="w-11 h-11 object-contain"
-  />
-</div>
-
-
+            <div className="w-9 h-8 bg-blue-300 rounded-lg flex items-center justify-center overflow-hidden">
+              <img
+                src={logo}
+                alt="EduVerge logo"
+                className="w-11 h-11 object-contain"
+              />
+            </div>
             <h1 className="text-xl font-bold text-gray-800">EduVerge</h1>
           </div>
           <p className="text-sm font-medium text-gray-800">
@@ -127,12 +123,10 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
           </p>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation (only this can scroll) */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {/* Dashboard */}
           <NavItem to="/" icon={<Home className="w-5 h-5" />} label="Dashboard" />
 
-          {/* ADMIN */}
           {user.role === 'admin' && (
             <>
               <NavItem
@@ -158,7 +152,6 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
             </>
           )}
 
-          {/* FACULTY */}
           {user.role === 'faculty' && (
             <>
               <NavItem
@@ -179,7 +172,6 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
             </>
           )}
 
-          {/* STUDENT */}
           {user.role === 'student' && (
             <>
               <NavItem
@@ -223,8 +215,8 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
           />
         </nav>
 
-        {/* Sign Out */}
-        <div className="p-4 border-t">
+        {/* Sign Out (fixed bottom) */}
+        <div className="flex-shrink-0 p-4 border-t">
           <button
             onClick={handleSignOut}
             className="flex items-center gap-3 px-4 py-3
@@ -237,7 +229,7 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         </div>
       </aside>
 
-      {/* 🧱 Mobile Overlay */}
+      {/* Mobile Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 md:hidden z-30"
@@ -246,7 +238,7 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
         />
       )}
     </>
-  )
-}
+  );
+};
 
-export default NavigationSidebar
+export default NavigationSidebar;

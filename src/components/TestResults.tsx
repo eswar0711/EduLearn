@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import type { User } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import { CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface TestResultsProps {
@@ -39,7 +39,7 @@ interface Question {
   marks: number;
 }
 
-const TestResults: React.FC<TestResultsProps> = ({ user }) => {
+const TestResults: React.FC<TestResultsProps> = () => {
   const { submissionId } = useParams<{ submissionId: string }>();
   const navigate = useNavigate();
 
@@ -111,7 +111,7 @@ const TestResults: React.FC<TestResultsProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="text-lg text-gray-600">Loading results...</div>
         </div>
@@ -122,7 +122,7 @@ const TestResults: React.FC<TestResultsProps> = ({ user }) => {
   if (error || !submission || !assessment) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
             <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
@@ -154,7 +154,7 @@ const TestResults: React.FC<TestResultsProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">

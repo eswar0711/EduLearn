@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Subject, CourseMaterial } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import SubjectManagement from './SubjectManagement';
 import { Upload, Trash2, FileText, BookOpen } from 'lucide-react';
 import { toast } from 'react-toastify';
+import PremiumLoader from '../layouts/PremiumLoader';
 
 
 interface FacultyCourseMaterialsProps {
@@ -207,9 +208,9 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+          <PremiumLoader message="Loading course materials..." />
         </div>
       </div>
     );
@@ -218,7 +219,7 @@ const FacultyCourseMaterials: React.FC<FacultyCourseMaterialsProps> = ({ user })
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
 
       <div className="flex-1 p-8">

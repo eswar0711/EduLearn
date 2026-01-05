@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
-import NavigationSidebar from '../NavigationSidebar';
+//import NavigationSidebar from '../NavigationSidebar';
 import {
   Download,
   Search,
@@ -44,7 +44,7 @@ interface GradeForm {
 }
 
 
-const AdminSubmissions: React.FC<AdminSubmissionsProps> = ({ user }) => {
+const AdminSubmissions: React.FC<AdminSubmissionsProps> = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -275,7 +275,7 @@ const AdminSubmissions: React.FC<AdminSubmissionsProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-lg text-gray-600">Loading submissions...</div>
         </div>
@@ -286,7 +286,7 @@ const AdminSubmissions: React.FC<AdminSubmissionsProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
 
       <div className="flex-1 p-8">

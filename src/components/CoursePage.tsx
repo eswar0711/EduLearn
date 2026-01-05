@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Subject, CourseMaterial } from '../utils/supabaseClient';
-import NavigationSidebar from './NavigationSidebar';
+//import NavigationSidebar from './NavigationSidebar';
 import { BookOpen, Download, FileText, Calendar } from 'lucide-react';
-
+import PremiumLoader from '../layouts/PremiumLoader';
 interface CoursePageProps {
   user: User;
 }
@@ -13,7 +13,7 @@ interface SubjectWithMaterials extends Subject {
   materials: CourseMaterial[];
 }
 
-const CoursePage: React.FC<CoursePageProps> = ({ user }) => {
+const CoursePage: React.FC<CoursePageProps> = () => {
   const [subjects, setSubjects] = useState<SubjectWithMaterials[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSemester, setSelectedSemester] = useState<number>(3); // Default semester
@@ -95,9 +95,9 @@ const CoursePage: React.FC<CoursePageProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg text-gray-600">Loading courses...</div>
+          <PremiumLoader message="Loading course materials..." />
         </div>
       </div>
     );
@@ -105,7 +105,7 @@ const CoursePage: React.FC<CoursePageProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="mb-8">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabaseClient';
 import type { User } from '../../utils/supabaseClient';
-import NavigationSidebar from '../NavigationSidebar';
+//import NavigationSidebar from '../NavigationSidebar';
 import { BarChart3, Users, BookOpen, Download, AlertCircle, TrendingUp, TrendingDown, RefreshCw, PieChart, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
@@ -56,7 +56,7 @@ interface AnalyticsData {
   overallStats?: OverallStats;
 }
 
-const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
+const AdminAnalytics: React.FC<AdminAnalyticsProps> = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     subjectPerformance: [],
     roleDistribution: [],
@@ -414,7 +414,7 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex">
-        <NavigationSidebar user={user} />
+        {/* <NavigationSidebar user={user} /> */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <BarChart3 className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-spin" />
@@ -427,7 +427,7 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ user }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <NavigationSidebar user={user} />
+      {/* <NavigationSidebar user={user} /> */}
 
       <div className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
