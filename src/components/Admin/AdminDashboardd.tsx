@@ -129,7 +129,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       <div className="flex-1 p-8">
         <div className="mb-8">
-          <h2 className="text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h2>
+          <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-teal-700 4-00 to-pink-500 bg-clip-text text-transparent">
+  Admin Dashboard
+</h2>
           <p className="text-gray-600">System overview and management</p>
         </div>
 
@@ -266,17 +268,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
           {/* Export Reports */}
           <div
-            onClick={() => navigate('/admin/reports')}
+            onClick={() => navigate('/admin/coding-analytics')}
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg hover:border-orange-300 cursor-pointer transition-all"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="bg-orange-100 p-3 rounded-lg">
                 <Download className="w-6 h-6 text-orange-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800">Export Reports</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Coding Analytics</h3>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Generate and download CSV/PDF reports
+              Track coding practice metrics and performance
             </p>
             <button className="text-orange-600 font-medium text-sm hover:text-orange-700">
               Open →
@@ -285,7 +287,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
           {/* System Settings */}
           <div
-            onClick={() => navigate('/admin/settings')}
+            onClick={() => navigate('/profile')}
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-400 cursor-pointer transition-all"
           >
             <div className="flex items-center gap-4 mb-4">

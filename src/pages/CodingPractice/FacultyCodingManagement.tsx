@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../utils/supabaseClient'
 import { CodingQuestion } from '../../utils/codingLabService'
-import { Eye, Edit2, Plus, CheckCircle, AlertCircle, Clock, Trash2, Lock } from 'lucide-react'
+import { Plus, CheckCircle, AlertCircle, Clock, Trash2, Lock } from 'lucide-react'
+import { Code2 } from 'lucide-react';
+
 
 interface FacultyCodingManagementProps {
   user: any
@@ -353,7 +355,16 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">📚 Coding Problem Management</h1>
+          <div className="flex items-center gap-3">
+  <div className="p-2 bg-blue-100 rounded-lg">
+    <Code2 className="w-6 h-6 text-blue-600" />
+  </div>
+  <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-teal-700 to-slate-800 bg-clip-text text-transparent">
+  Coding Problem Management
+</h1>
+
+</div>
+
           <button
             onClick={() => {
               setEditing(null)
@@ -371,8 +382,20 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
                 is_published: false,
               })
               setShowForm(true)
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
+              }}
+              className="
+              w-full sm:w-auto
+              flex items-center justify-center gap-2
+              px-5 py-2.5
+              bg-gradient-to-r from-purple-700 to-emerald-400
+              text-white font-semibold
+              rounded-lg
+              shadow-md
+              hover:from-purple-800 hover:to-emerald-600
+              hover:shadow-lg
+              transition-all duration-200
+              focus:outline-none focus:ring-2 focus:ring-blue-400
+            "
           >
             <Plus className="w-5 h-5" />
             Create Problem
@@ -504,81 +527,162 @@ const FacultyCodingManagement: React.FC<FacultyCodingManagementProps> = ({ user 
 
         {/* Questions Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="p-4 text-left">Title</th>
-                <th className="p-4 text-left">Difficulty</th>
-                <th className="p-4 text-left">Language</th>
-                <th className="p-4 text-left">Status</th>
-                <th className="p-4 text-left">Submissions</th>
-                <th className="p-4 text-left">Hidden Tests</th>
-                <th className="p-4 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {questions.map((q) => (
-                <tr key={q.id} className="border-t hover:bg-gray-50">
-                  <td className="p-4">{q.title}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                      q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {q.difficulty}
-                    </span>
-                  </td>
-                  <td className="p-4">{q.programming_language}</td>
-                  <td className="p-4">
-                    {q.is_published ? '✅ Published' : '⭕ Draft'}
-                  </td>
-                  <td className="p-4">
-                    <span className="font-semibold text-blue-600">
-                      {submissionCounts[q.id] || 0}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className="font-semibold text-purple-600 flex items-center gap-1">
-                      <Lock className="w-4 h-4" />
-                      {hiddenTestsCount[q.id] || 0}
-                    </span>
-                  </td>
-                  <td className="p-4 space-x-2 flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => fetchHiddenTests(q.id)}
-                      className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-1 text-sm"
-                      title="Manage hidden test cases"
-                    >
-                      <Lock className="w-4 h-4" />
-                      Tests
-                    </button>
-                    <button
-                      onClick={() => fetchSubmissions(q.id, q.title)}
-                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-1 text-sm"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleEdit(q)}
-                      className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1 text-sm"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(q.id)}
-                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+  {/* ================= DESKTOP TABLE ================= */}
+  <div className="hidden md:block">
+    <table className="w-full">
+      <thead className="bg-gray-200">
+        <tr>
+          <th className="p-4 text-left">Title</th>
+          <th className="p-4 text-left">Difficulty</th>
+          <th className="p-4 text-left">Language</th>
+          <th className="p-4 text-left">Status</th>
+          <th className="p-4 text-left">Submissions</th>
+          <th className="p-4 text-left">Hidden Tests</th>
+          <th className="p-4 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {questions.map((q) => (
+          <tr key={q.id} className="border-t hover:bg-gray-50">
+            <td className="p-4 font-medium">{q.title}</td>
+
+            <td className="p-4">
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-red-100 text-red-700'
+              }`}>
+                {q.difficulty}
+              </span>
+            </td>
+
+            <td className="p-4">{q.programming_language}</td>
+            <td className="p-4">{q.is_published ? '✅ Published' : '⭕ Draft'}</td>
+
+            <td className="p-4 text-blue-600 font-semibold">
+              {submissionCounts[q.id] || 0}
+            </td>
+
+            <td className="p-4 flex items-center gap-1.5 text-purple-600 font-semibold">
+              <Lock className="w-4 h-4" />
+              {hiddenTestsCount[q.id] || 0}
+            </td>
+
+            <td className="p-4 align-middle">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <button
+                onClick={() => fetchHiddenTests(q.id)}
+               className="px-3 py-1 gap-1.5 bg-purple-500 text-white rounded text-sm">
+              
+                Tests
+              </button>
+              <button
+                onClick={() => fetchSubmissions(q.id, q.title)}
+                className="px-3 py-1 gap-1.5 bg-green-500 text-white rounded text-sm"
+              >
+                View
+              </button>
+              <button
+                onClick={() => handleEdit(q)}
+                className="px-3 py-1 gap-1.5 bg-blue-500 text-white rounded text-sm"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(q.id)}
+                className="px-3 py-1 gap-1.5 bg-red-500 text-white rounded text-sm"
+              >
+                Delete
+              </button>
+              </div>
+            </td>
+
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ================= MOBILE CARDS ================= */}
+  <div className="md:hidden space-y-4 p-4">
+    {questions.map((q) => (
+      <div
+        key={q.id}
+        className="border rounded-xl p-4 shadow-sm space-y-3"
+      >
+        {/* Header */}
+        <div>
+          <p className="font-semibold text-gray-800 text-base">{q.title}</p>
+          <p className="text-sm text-gray-500">
+            {q.programming_language}
+          </p>
         </div>
+
+        {/* Meta */}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className={`px-2 py-1 rounded font-medium ${
+            q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+            q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {q.difficulty}
+          </span>
+
+          <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">
+            {q.is_published ? 'Published' : 'Draft'}
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-gray-500">Submissions</p>
+            <p className="font-semibold text-blue-600">
+              {submissionCounts[q.id] || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500">Hidden Tests</p>
+            <p className="font-semibold text-purple-600 flex items-center gap-1">
+              <Lock className="w-4 h-4" />
+              {hiddenTestsCount[q.id] || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 pt-2">
+          <button
+            onClick={() => fetchHiddenTests(q.id)}
+            className="flex-1 bg-purple-500 text-white px-3 py-2 rounded text-sm"
+          >
+            Tests
+          </button>
+          <button
+            onClick={() => fetchSubmissions(q.id, q.title)}
+            className="flex-1 bg-green-500 text-white px-3 py-2 rounded text-sm"
+          >
+            View
+          </button>
+          <button
+            onClick={() => handleEdit(q)}
+            className="flex-1 bg-blue-500 text-white px-3 py-2 rounded text-sm"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDelete(q.id)}
+            className="flex-1 bg-red-500 text-white px-3 py-2 rounded text-sm"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
       </div>
 
       {/* ===== HIDDEN TESTS MODAL ===== */}

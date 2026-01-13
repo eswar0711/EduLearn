@@ -32,7 +32,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     {
       role: 'Admin',
       email: 'admin@eduverge.com',
-      password: 'admin@123',
+      password: 'Admin@123',
     },
   ];
 

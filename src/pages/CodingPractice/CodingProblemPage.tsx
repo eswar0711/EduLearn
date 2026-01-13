@@ -76,7 +76,7 @@ const CodingProblemPage: React.FC<CodingProblemPageProps> = ({ user }) => {
 
     if (result.status === 'success') setError(null)
     else if (result.status === 'test_failed')
-      setError('❌ Test failed. Please review your code.')
+      setError('❌ Please review your code.')
     else if (result.status === 'error')
       setError('❌ Compilation/runtime error.')
   }

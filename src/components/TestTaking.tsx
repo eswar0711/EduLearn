@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import type { User, Question } from '../utils/supabaseClient';
 import { autoGradeMCQ } from '../utils/autoGrading';
-//import NavigationSidebar from './NavigationSidebar';
 import ConfirmationModal from './ConfirmationModal';
 import QuestionDisplay from '../components/TestManager/QuestionDisplay';
+import PremiumLoader from '../layouts/PremiumLoader';
+
 import {
   getOrCreateTestSession,
   calculateRemainingTime,
@@ -20,24 +21,25 @@ import { Clock, AlertCircle, ChevronDown } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
 interface TestTakingProps {
   user: User;
 }
-
 
 const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const navigate = useNavigate();
 
-
   // ============ STATE MANAGEMENT ============
   const [assessment, setAssessment] = useState<any>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  
+  // 🟢 FIX 3: Track success to unmount "Time Expired" screen
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  
   const [testSession, setTestSession] = useState<TestSession | null>(null);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,86 +50,54 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
   const [hasShownFiveMinWarning, setHasShownFiveMinWarning] = useState(false);
   const [hasShownOneMinWarning, setHasShownOneMinWarning] = useState(false);
 
+  // Refs for accessing latest state in closures
+  const answersRef = useRef(answers);
+  const questionsRef = useRef(questions);
+  const submittingRef = useRef(submitting);
+
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { submittingRef.current = submitting; }, [submitting]);
 
   // ============ UTILITIES ============
-
-
-  /**
-   * Format time into compact HH:MM:SS or MM:SS format
-   * @param seconds - Total seconds remaining
-   * @returns Formatted time string (e.g., "2:05:30" or "45:30")
-   */
   const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-
+    const safeSeconds = Math.max(0, seconds);
+    const hours = Math.floor(safeSeconds / 3600);
+    const mins = Math.floor((safeSeconds % 3600) / 60);
+    const secs = safeSeconds % 60;
     const padZero = (num: number) => num.toString().padStart(2, '0');
-
-
-    if (hours > 0) {
-      return `${hours}:${padZero(mins)}:${padZero(secs)}`;
-    }
+    if (hours > 0) return `${hours}:${padZero(mins)}:${padZero(secs)}`;
     return `${mins}:${padZero(secs)}`;
   };
 
-
-  /**
-   * Get timer color based on remaining time
-   * @returns Tailwind color class
-   */
   const getTimeColor = (): string => {
-    if (timeLeft <= 300) return 'text-red-600'; // < 5 mins
-    if (timeLeft <= 600) return 'text-amber-600'; // < 10 mins
-    return 'text-teal-600'; // > 10 mins
+    if ((timeLeft || 0) <= 300) return 'text-red-600';
+    if ((timeLeft || 0) <= 600) return 'text-amber-600';
+    return 'text-teal-600';
   };
 
-
-  /**
-   * Get timer background color
-   * @returns Tailwind background color class
-   */
   const getTimeBgColor = (): string => {
-    if (timeLeft <= 300) return 'bg-red-50 border-red-200';
-    if (timeLeft <= 600) return 'bg-amber-50 border-amber-200';
+    if ((timeLeft || 0) <= 300) return 'bg-red-50 border-red-200';
+    if ((timeLeft || 0) <= 600) return 'bg-amber-50 border-amber-200';
     return 'bg-teal-50 border-teal-200';
   };
 
-
-  /**
-   * Get timer status label
-   * @returns Status text (e.g., "Critical", "Low", "Good")
-   */
   const getTimeStatus = (): string => {
-    if (timeLeft <= 300) return 'Critical';
-    if (timeLeft <= 600) return 'Low';
+    if ((timeLeft || 0) <= 300) return 'Critical';
+    if ((timeLeft || 0) <= 600) return 'Low';
     return 'Good';
   };
 
-
-  /**
-   * Calculate percentage of questions answered
-   * @returns Number between 0-100
-   */
   const getProgressPercentage = (): number => {
     if (questions.length === 0) return 0;
     return Math.round((Object.keys(answers).length / questions.length) * 100);
   };
 
-
-  /**
-   * Get unanswered question count
-   * @returns Number of unanswered questions
-   */
   const getUnansweredCount = (): number => {
     return questions.length - Object.keys(answers).length;
   };
 
-
   // ============ INITIALIZATION ============
-
-
   useEffect(() => {
     if (!assessmentId) {
       setError('Assessment ID is missing');
@@ -135,256 +105,150 @@ const TestTaking: React.FC<TestTakingProps> = ({ user }) => {
       return;
     }
 
-
     const initializeTest = async () => {
       try {
         setLoading(true);
         console.log('🔄 Initializing test...');
 
+        // 1. Check if ALREADY SUBMITTED
+        const { data: existingSubmission } = await supabase
+          .from('submissions')
+          .select('id, submitted_at')
+          .eq('assessment_id', assessmentId)
+          .eq('student_id', user.id)
+          .maybeSingle();
 
-        // Fetch assessment
+        if (existingSubmission && existingSubmission.submitted_at) {
+          console.log('✅ Test already submitted. Redirecting...');
+          navigate(`/results-summary/${existingSubmission.id}`, { replace: true });
+          return;
+        }
+
+        // 2. Load Assessment
         const { data: assessmentData, error: assessmentError } = await supabase
           .from('assessments')
           .select('*')
           .eq('id', assessmentId)
           .single();
 
-
-        if (assessmentError || !assessmentData) {
-          console.error('❌ Assessment error:', assessmentError);
-          setError('Failed to load assessment');
-          toast.error('Failed to load assessment', {
-            position: 'top-right',
-            autoClose: 5000,
-          });
-          setLoading(false);
-          return;
-        }
-
-
+        if (assessmentError || !assessmentData) throw new Error('Failed to load assessment');
         setAssessment(assessmentData);
 
-
-        // Fetch questions
+        // 3. Load Questions
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
           .eq('assessment_id', assessmentId)
           .order('question_number', { ascending: true });
 
-
-        if (questionsError) {
-          console.error('❌ Questions error:', questionsError);
-          setError('Failed to load questions');
-          toast.error('Failed to load questions', {
-            position: 'top-right',
-            autoClose: 5000,
-          });
-          setLoading(false);
-          return;
-        }
-
-
+        if (questionsError) throw new Error('Failed to load questions');
+        
         setQuestions(questionsData || []);
+        questionsRef.current = questionsData || [];
 
-
-        // Get or create test session
-        const session = await getOrCreateTestSession(
-          assessmentId,
-          assessmentData.duration_minutes
-        );
-
-
+        // 4. Init Session
+        const session = await getOrCreateTestSession(assessmentId, assessmentData.duration_minutes);
         setTestSession(session);
 
-
-        // Load draft answers
+        // 5. Load Drafts
         const draftAnswers = await loadDraftAnswers(session.id);
         setAnswers(draftAnswers);
+        answersRef.current = draftAnswers;
 
-
-        // Calculate remaining time
+        // 6. Calculate Time
         const remaining = calculateRemainingTime(session);
         setTimeLeft(remaining);
 
-
+        // Check expiry on load
         if (remaining <= 0) {
+          console.warn('⚠️ Test loaded but already expired. Triggering submit...');
           setIsTimeExpired(true);
-          toast.warning('⏱️ Time expired for this test', {
-            position: 'top-right',
-            autoClose: 5000,
-          });
+          setTimeout(() => handleAutoSubmit(), 500); 
         }
-
 
         setLoading(false);
       } catch (error: any) {
         console.error('❌ Init error:', error);
-        setError('Error loading test: ' + (error.message || 'Unknown'));
-        toast.error('Error loading test: ' + (error.message || 'Unknown'), {
-          position: 'top-right',
-          autoClose: 5000,
-        });
+        setError(error.message || 'Unknown error');
         setLoading(false);
       }
     };
 
-
     initializeTest();
-  }, [assessmentId]);
+  }, [assessmentId, user.id, navigate]);
 
+  // ============ 🟢 FIX 1: TIMER COUNTDOWN (Removed timeLeft from deps) ============
+  useEffect(() => {
+    if (loading || isTimeExpired || submitting || timeLeft === null) return;
 
-  // ============ TIMER COUNTDOWN ============
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === null) return null;
+        
+        if (prev <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
+    return () => clearInterval(timer);
+  }, [loading, isTimeExpired, submitting]); // ✅ timeLeft removed to prevent infinite loops
 
-  // useEffect(() => {
-  //   if (!testSession || isTimeExpired || submitting) return;
-
-
-  //   const timer = setInterval(() => {
-  //     const remaining = calculateRemainingTime(testSession);
-
-
-  //     if (remaining <= 0) {
-  //       console.warn('⏱️ Time expired!');
-  //       setIsTimeExpired(true);
-  //       setTimeLeft(0);
-  //       clearInterval(timer);
-  //       handleAutoSubmit();
-  //     } else {
-  //       setTimeLeft(remaining);
-
-
-  //       // ✅ SHOW 5-MINUTE WARNING (ONLY ONCE)
-  //       if (remaining <= 300 && !hasShownFiveMinWarning) {
-  //         setHasShownFiveMinWarning(true);
-  //         toast.warning('⏰ Time is running out! You have only 5 minutes left!', {
-  //           position: 'top-right',
-  //           autoClose: 5000,
-  //           className: 'bg-red-50 border-l-4 border-red-600',
-  //           bodyClassName: 'text-red-700 font-semibold',
-  //           icon: '⚠️',
-  //         });
-  //         console.warn('⏰ 5-minute warning shown');
-  //       }
-
-
-  //       // ✅ SHOW 1-MINUTE WARNING (ONLY ONCE)
-  //       if (remaining <= 60 && !hasShownOneMinWarning) {
-  //         setHasShownOneMinWarning(true);
-  //         toast.error('🚨 CRITICAL! Only 1 minute remaining! Submit your answers now!', {
-  //           position: 'top-right',
-  //           autoClose: 3000,
-  //           className: 'bg-red-100 border-l-4 border-red-800',
-  //           bodyClassName: 'text-red-800 font-bold',
-  //           icon: '🚨',
-  //         });
-  //         console.error('🚨 1-minute warning shown');
-  //       }
-  //     }
-  //   }, 1000);
-
-
-  //   return () => clearInterval(timer);
-  // }, [testSession, isTimeExpired, submitting, hasShownFiveMinWarning, hasShownOneMinWarning]);
-// Replace the timer countdown useEffect with this:
-
-useEffect(() => {
-  if (!testSession || isTimeExpired || submitting) return;
-
-  const timer = setInterval(() => {
-    const remaining = calculateRemainingTime(testSession);
-
-    if (remaining <= 0) {
-      console.warn('⏱️ Time expired!');
+  // ============ 🟢 FIX 2: WATCHER (Added missing deps) ============
+  useEffect(() => {
+    // Check expiry
+    if (timeLeft !== null && timeLeft <= 0 && !isTimeExpired && !loading && !submittingRef.current) {
+      console.warn('⏱️ Timer finished! Triggering auto-submit...');
       setIsTimeExpired(true);
-      setTimeLeft(0);
-      clearInterval(timer);
       handleAutoSubmit();
-    } else {
-      setTimeLeft(remaining);
-
-      // ✅ SHOW WARNING BASED ON CURRENT TIME (NOT FLAGS)
-      // Only show 1-minute warning if time is between 1-60 seconds
-      if (remaining > 60 && remaining <= 300 && !hasShownFiveMinWarning) {
-        setHasShownFiveMinWarning(true);
-        toast.warning('⏰ Time is running out! You have only 5 minutes left!', {
-          position: 'top-right',
-          autoClose: 5000,
-          className: 'bg-amber-50 border-l-4 border-amber-600',
-        });
-        console.warn('⏰ 5-minute warning shown');
-      }
-
-      // Only show 1-minute warning if time is less than 60 seconds
-      if (remaining <= 60 && !hasShownOneMinWarning) {
-        setHasShownOneMinWarning(true);
-        toast.error('🚨 CRITICAL! Only 1 minute remaining! Submit your answers now!', {
-          position: 'top-right',
-          autoClose: 3000,
-          className: 'bg-red-100 border-l-4 border-red-800',
-        });
-        console.error('🚨 1-minute warning shown');
-      }
     }
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, [testSession, isTimeExpired, submitting, hasShownFiveMinWarning, hasShownOneMinWarning]);
-
+    
+    // Check warnings
+    if (timeLeft !== null && timeLeft > 0) {
+       if (timeLeft <= 300 && timeLeft > 60 && !hasShownFiveMinWarning) {
+          setHasShownFiveMinWarning(true);
+          toast.warning('⏰ 5 Minutes Remaining!');
+       }
+       if (timeLeft <= 60 && !hasShownOneMinWarning) {
+          setHasShownOneMinWarning(true);
+          toast.error('🚨 1 Minute Remaining! Submit now!');
+       }
+    }
+  }, [
+    timeLeft, 
+    isTimeExpired, 
+    loading, 
+    hasShownFiveMinWarning, 
+    hasShownOneMinWarning
+  ]); // ✅ Deps are exhaustive
 
   // ============ AUTO-SAVE ANSWERS ============
-
-
   useEffect(() => {
-    if (!testSession || submitting || Object.keys(answers).length === 0)
-      return;
-
-
-    console.log('💾 Auto-saving answers...');
-    saveDraftAnswers(testSession.id, answers);
-
+    if (!testSession || submitting || Object.keys(answers).length === 0) return;
 
     const saveInterval = setInterval(() => {
-      console.log('💾 Auto-saving answers...');
       saveDraftAnswers(testSession.id, answers);
     }, 5000);
-
 
     return () => clearInterval(saveInterval);
   }, [testSession, answers, submitting]);
 
-
   // ============ EVENT HANDLERS ============
-
-
-  /**
-   * Handle answer change for a question
-   */
   const handleAnswerChange = (questionId: string, answer: string) => {
-    console.log(`✏️ Answer changed for Q${questionId}: ${answer}`);
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-
-  /**
-   * Navigate to a specific question
-   */
   const handleNavigateQuestion = (newIndex: number) => {
-    console.log(`➡️ Navigating to question ${newIndex + 1}`);
     setCurrentQuestionIndex(newIndex);
-    setExpandedHeader(false); // Collapse header on navigation
+    setExpandedHeader(false);
   };
 
-
-  /**
-   * Handle submit click - check for unanswered questions
-   */
   const handleSubmitClick = () => {
     const unansweredQuestions = questions
       .map((q, idx) => (!answers[q.id] ? idx + 1 : null))
       .filter((n) => n !== null);
-
 
     if (unansweredQuestions.length > 0) {
       setShowUnansweredWarning(true);
@@ -393,343 +257,203 @@ useEffect(() => {
     }
   };
 
-
-  /**
-   * Confirm unanswered and proceed to final confirmation
-   */
   const handleConfirmUnanswered = () => {
     setShowUnansweredWarning(false);
     setShowConfirmModal(true);
   };
 
-
-  /**
-   * Auto-submit when time expires
-   */
   const handleAutoSubmit = async () => {
-    if (!testSession) return;
+    if (submittingRef.current) return;
     await submitTest(true);
   };
 
-
-  /**
-   * Handle final submit confirmation
-   */
   const handleConfirmSubmit = async () => {
     await submitTest(false);
   };
 
-
-  /**
-   * Submit test to database
-   */
+  // ============ SUBMIT LOGIC ============
   const submitTest = async (isAutoSubmit: boolean) => {
     if (!testSession) return;
-
-
+    if (submittingRef.current) return;
+    
     setSubmitting(true);
 
-
     try {
-      // Mark session as completed
+      const currentAnswers = answersRef.current;
+      const currentQuestions = questionsRef.current;
+
       await completeTestSession(testSession.id);
 
+      const mcqScore = autoGradeMCQ(currentQuestions, currentAnswers);
+      const totalMarks = currentQuestions.reduce((sum, q) => sum + q.marks, 0);
+      const percentageScore = totalMarks > 0 ? Math.round((mcqScore / totalMarks) * 100) : 0;
 
-      // Calculate score
-      const mcqScore = autoGradeMCQ(questions, answers);
-      const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
-      const percentageScore =
-        totalMarks > 0 ? Math.round((mcqScore / totalMarks) * 100) : 0;
-
-
-      // Insert submission
-      const { data: submission, error: submitError } = await supabase
+      // Check for EXISTING submission
+      const { data: existingSubmission } = await supabase
         .from('submissions')
-        .insert({
-          assessment_id: assessmentId,
-          student_id: user.id,
-          test_session_id: testSession.id,
-          answers: answers,
-          mcq_score: mcqScore,
-          theory_score: null,
-          total_score: percentageScore,
-          is_auto_submitted: isAutoSubmit,
-          submitted_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('assessment_id', assessmentId)
+        .eq('student_id', user.id)
+        .maybeSingle();
 
+      const submissionPayload = {
+        assessment_id: assessmentId,
+        student_id: user.id,
+        test_session_id: testSession.id,
+        answers: currentAnswers, 
+        mcq_score: mcqScore,
+        theory_score: null,
+        total_score: percentageScore,
+        is_auto_submitted: isAutoSubmit,
+        submitted_at: new Date().toISOString(), // Marks as COMPLETED
+      };
 
-      if (submitError) throw submitError;
+      let submissionId;
 
+      if (existingSubmission) {
+        const { data, error } = await supabase
+          .from('submissions')
+          .update(submissionPayload)
+          .eq('id', existingSubmission.id)
+          .select()
+          .single();
+        if (error) throw error;
+        submissionId = data.id;
+      } else {
+        const { data, error } = await supabase
+          .from('submissions')
+          .insert(submissionPayload)
+          .select()
+          .single();
+        if (error) throw error;
+        submissionId = data.id;
+      }
 
-      // Lock the test session
-      await lockTestSession(testSession.id, submission.id);
-
-
-      // Delete draft answers
+      await lockTestSession(testSession.id, submissionId);
       await deleteDraftAnswers(testSession.id);
 
+      console.log('✅ Test submitted successfully');
+      
+      // 🟢 FIX 3: Update success state so we don't show "Time Expired" anymore
+      setSubmissionSuccess(true); 
 
-      console.log('✅ Test submitted and session locked');
-
-
-      // Show success toast and redirect
       toast.success(
-        isAutoSubmit
-          ? '✅ Test auto-submitted successfully!'
-          : '✅ Test submitted successfully!',
+        isAutoSubmit ? '✅ Time expired. Test submitted.' : '✅ Test submitted successfully!',
         {
           position: 'top-right',
           autoClose: 2000,
-          onClose: () => navigate(`/results-summary/${submission.id}`),
+          onClose: () => navigate(`/results-summary/${submissionId}`),
         }
       );
 
+      // Force redirect fallback
+      if(isAutoSubmit) {
+         setTimeout(() => navigate(`/results-summary/${submissionId}`), 2500);
+      }
 
       setShowConfirmModal(false);
+
     } catch (error: any) {
       console.error('❌ Submit error:', error);
-      setError('Error submitting: ' + error.message);
-
-
-      toast.error('Error submitting test. Please try again.', {
-        position: 'top-right',
-        autoClose: 5000,
-      });
-
-
-      setShowConfirmModal(false);
-    } finally {
-      setSubmitting(false);
+      
+      if (isAutoSubmit) {
+        toast.error("Saving... Redirecting...");
+        setTimeout(() => navigate('/'), 3000);
+      } else {
+        setError('Error submitting: ' + error.message);
+        setSubmitting(false);
+        setShowConfirmModal(false);
+      }
     }
   };
 
-
   // ============ RENDER STATES ============
 
-
-  if (loading) {
-    return (
-      <div className="flex">
-        {/* <NavigationSidebar user={user} /> */}
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="text-lg text-gray-600">Loading test...</div>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <div className="flex justify-center items-center h-screen"><PremiumLoader message="Loading test..." /></div>;
 
   if (error) {
     return (
-      <div className="flex">
-        {/* <NavigationSidebar user={user} /> */}
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-            <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+          <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button onClick={() => navigate('/')} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Back to Dashboard</button>
         </div>
-        <ToastContainer />
       </div>
     );
   }
 
-
-  if (!assessment || !testSession) {
+  // 🟢 FIX 3: Only show "Time Expired" if we haven't successfully submitted yet
+  if (isTimeExpired && !submissionSuccess) {
     return (
-      <div className="flex">
-        {/* <NavigationSidebar user={user} /> */}
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="text-lg text-red-600">Assessment not found</div>
-        </div>
-      </div>
-    );
-  }
-
-
-  if (isTimeExpired) {
-    return (
-      <div className="flex">
-        {/* <NavigationSidebar user={user} /> */}
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
-            <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-red-600 mb-2">
-              ⏱️ Time Expired
-            </h2>
-            <p className="text-gray-600 mb-6">Your test has been auto-submitted.</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Back to Dashboard
-            </button>
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4 animate-pulse" />
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Time Expired</h2>
+          <p className="text-gray-600 mb-6">Submitting your answers...</p>
+          
+          <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden mb-6">
+             <div className="h-full bg-blue-600 animate-progress"></div>
           </div>
+
+          <button 
+            onClick={() => handleAutoSubmit()} 
+            className="text-sm text-gray-400 hover:text-gray-600 underline"
+          >
+            Stuck? Click here to retry submission
+          </button>
         </div>
-        <ToastContainer />
       </div>
     );
   }
 
+  if (!assessment) return null;
 
   // ============ MAIN RENDER ============
-
-
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      {/* <NavigationSidebar user={user} /> */}
-
-
       <div className="flex-1 flex flex-col">
-        {/* ============ MOBILE-OPTIMIZED HEADER ============ */}
+        {/* Header */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-          {/* MAIN HEADER ROW - COMPACT FOR MOBILE */}
           <div className={`px-4 py-3 sm:px-6 sm:py-4 border-2 ${getTimeBgColor()} transition-colors duration-300`}>
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-              {/* LEFT: Title & Subject */}
+            <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-800 truncate">
-                  {assessment.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  {assessment.subject} • U{assessment.unit}
-                </p>
+                <h2 className="text-base sm:text-xl font-bold text-gray-800 truncate">{assessment.title}</h2>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">{assessment.subject} • U{assessment.unit}</p>
               </div>
-
-
-              {/* RIGHT: TIMER - COMPACT & PROMINENT */}
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <div className={`flex items-center gap-1.5 font-mono text-lg sm:text-2xl font-bold ${getTimeColor()} transition-colors duration-300 ${
-                  timeLeft <= 300 ? 'animate-pulse' : ''
-                }`}>
-                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                  <span>{formatTime(timeLeft)}</span>
+              <div className="flex flex-col items-end gap-1">
+                <div className={`flex items-center gap-1.5 font-mono text-lg sm:text-2xl font-bold ${getTimeColor()}`}>
+                  <Clock className="w-5 h-5" />
+                  <span>{formatTime(timeLeft || 0)}</span>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  timeLeft <= 300
-                    ? 'bg-red-100 text-red-700'
-                    : timeLeft <= 600
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-teal-100 text-teal-700'
-                }`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${timeLeft && timeLeft <= 300 ? 'bg-red-100 text-red-700' : 'bg-teal-100 text-teal-700'}`}>
                   {getTimeStatus()}
                 </span>
               </div>
             </div>
           </div>
-
-
-          {/* EXPANDABLE PROGRESS SECTION - MOBILE ONLY */}
+          {/* Mobile Header */}
           <div className="md:hidden border-t border-gray-100">
-            <button
-              onClick={() => setExpandedHeader(!expandedHeader)}
-              className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-sm font-medium text-gray-700">
-                Question {currentQuestionIndex + 1}/{questions.length}
-              </span>
-              <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${
-                  expandedHeader ? 'rotate-180' : ''
-                }`}
-              />
+            <button onClick={() => setExpandedHeader(!expandedHeader)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-gray-50">
+              <span className="text-sm font-medium text-gray-700">Question {currentQuestionIndex + 1}/{questions.length}</span>
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedHeader ? 'rotate-180' : ''}`} />
             </button>
-
-
-            {/* EXPANDED DETAILS */}
             {expandedHeader && (
-              <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 space-y-3 animate-in fade-in duration-200">
-                {/* PROGRESS BAR */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs font-semibold text-gray-700">Progress</span>
-                    <span className="text-xs font-bold text-teal-600">
-                      {getProgressPercentage()}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-300"
-                      style={{ width: `${getProgressPercentage()}%` }}
-                    />
-                  </div>
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 animate-in fade-in">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-semibold text-gray-700">Progress</span>
+                  <span className="text-xs font-bold text-teal-600">{getProgressPercentage()}%</span>
                 </div>
-
-
-                {/* ANSWER STATS */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white rounded-lg p-2 text-center border border-gray-200">
-                    <p className="text-xs text-gray-600">Answered</p>
-                    <p className="text-sm font-bold text-teal-600">
-                      {Object.keys(answers).length}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg p-2 text-center border border-gray-200">
-                    <p className="text-xs text-gray-600">Unanswered</p>
-                    <p className="text-sm font-bold text-amber-600">
-                      {getUnansweredCount()}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg p-2 text-center border border-gray-200">
-                    <p className="text-xs text-gray-600">Total</p>
-                    <p className="text-sm font-bold text-gray-700">
-                      {questions.length}
-                    </p>
-                  </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+                  <div className="h-full bg-teal-500" style={{ width: `${getProgressPercentage()}%` }} />
                 </div>
               </div>
             )}
           </div>
-
-
-          {/* DESKTOP PROGRESS ROW - HIDDEN ON MOBILE */}
-          <div className="hidden md:block px-6 py-3 bg-gray-50 border-t border-gray-100">
-            <div className="flex items-center justify-between gap-6">
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Progress: Question {currentQuestionIndex + 1}/{questions.length}
-                  </span>
-                  <span className="text-sm font-bold text-teal-600">
-                    {getProgressPercentage()}%
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-300"
-                    style={{ width: `${getProgressPercentage()}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-4 text-sm">
-                <div className="text-center">
-                  <p className="text-gray-600 text-xs">Answered</p>
-                  <p className="font-bold text-teal-600">
-                    {Object.keys(answers).length}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-600 text-xs">Unanswered</p>
-                  <p className="font-bold text-amber-600">
-                    {getUnansweredCount()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-
-        {/* ============ QUESTION DISPLAY ============ */}
+        {/* Question Display */}
         <QuestionDisplay
           questions={questions}
           answers={answers}
@@ -739,19 +463,14 @@ useEffect(() => {
           onSubmit={handleSubmitClick}
           isTimeExpired={isTimeExpired}
           submitting={submitting}
-          timeLeft={timeLeft}
+          timeLeft={timeLeft || 0}
         />
       </div>
 
-
-      {/* ============ MODALS ============ */}
-
-
-      {/* UNANSWERED QUESTIONS WARNING */}
       <ConfirmationModal
         isOpen={showUnansweredWarning}
         title="Unanswered Questions"
-        message={`You have ${getUnansweredCount()} question(s) unanswered. Are you sure you want to submit?`}
+        message={`You have ${getUnansweredCount()} unanswered questions.`}
         confirmLabel="Submit Anyway"
         cancelLabel="Continue"
         onConfirm={handleConfirmUnanswered}
@@ -759,12 +478,10 @@ useEffect(() => {
         isLoading={false}
       />
 
-
-      {/* FINAL CONFIRMATION */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         title="Submit Test?"
-        message="Are you sure you want to submit your test? Once submitted, you won't be able to change your answers."
+        message="Are you sure? You cannot change answers after submitting."
         confirmLabel="Submit"
         cancelLabel="Cancel"
         onConfirm={handleConfirmSubmit}
@@ -772,22 +489,9 @@ useEffect(() => {
         isLoading={submitting}
       />
 
-
-      {/* TOAST NOTIFICATIONS */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   );
 };
-
 
 export default TestTaking;

@@ -37,6 +37,7 @@ import AdminCodingAnalytics from './pages/CodingPractice/AdminCodingAnalytics';
 import SubmissionView from './pages/CodingPractice/SubmissionView';
 import ResultsSummary from './components/ResultsSummary';
 import SessionLockGuard from './components/SessionLockGuard';
+import FacultyStudentManagement from './components/FacultyStudentManagement';
 import { ToastContainer } from 'react-toastify';
 
 const convertAuthUserToComponentUser = (authUser: AuthUser): any => ({
@@ -170,17 +171,18 @@ const App: React.FC = () => {
           }
         />
         <Route
-          path="/coding-lab/:problemId"
-          element={
-            user && user.role === 'student' ? (
-              <DashboardLayout user={componentUser}>
-                <CodingProblemPage user={componentUser} />
-              </DashboardLayout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+  path="/coding-lab/:problemId"
+  element={
+    componentUser?.role === 'student' ? (
+      // <DashboardLayout user={componentUser}>
+        <CodingProblemPage user={componentUser} />
+      // </DashboardLayout>
+    ) : (
+      <Navigate to="/login" replace />
+    )
+  }
+/>
+
         <Route
           path="/coding-management"
           element={
@@ -254,16 +256,30 @@ const App: React.FC = () => {
           }
         />
 
+        <Route
+          path="/faculty/student"
+          element={
+            user && user.role === 'faculty' ? (
+              <DashboardLayout user={componentUser}>
+                <FacultyStudentManagement user={componentUser} />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+
         {/* STUDENT */}
         <Route
           path="/take-test/:assessmentId"
           element={
             user && user.role === 'student' ? (
-              <DashboardLayout user={componentUser}>
+              // <DashboardLayout user={componentUser}>
                 <SessionLockGuard>
                   <TestTaking user={componentUser} />
                 </SessionLockGuard>
-              </DashboardLayout>
+              // </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )
@@ -285,9 +301,9 @@ const App: React.FC = () => {
           path="/ai-assistant"
           element={
             user && user.role === 'student' ? (
-              <DashboardLayout user={componentUser}>
+              //<DashboardLayout user={componentUser}>
                 <AIAssistantModule user={componentUser} />
-              </DashboardLayout>
+             // </DashboardLayout>
             ) : (
               <Navigate to="/login" />
             )

@@ -280,59 +280,88 @@ const AdminCodingAnalytics: React.FC<AdminCodingAnalyticsProps> = () => {
     <div className="w-full min-h-screen bg-gray-50">
       {/* Header - Full Width, Sticky */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/admin')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Back to Admin Dashboard"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h2 className="text-3xl font-bold text-gray-800">Coding Lab Analytics</h2>
-              <p className="text-gray-600 text-sm mt-1">Track coding practice metrics and performance</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowChartModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-            >
-              <PieChart className="w-4 h-4" />
-              View Charts
-            </button>
-            {/* <button
-              onClick={() => {
-                setLoading(true)
-                setError(null)
-                fetchCodingAnalytics()
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button> */}
-            <button
-              onClick={exportToExcel}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isExporting ? (
-                <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="w-5 h-5" />
-                  Export Excel
-                </>
-              )}
-            </button>
-          </div>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+
+    {/* Top Row */}
+    <div className="flex items-start sm:items-center justify-between gap-4">
+
+      {/* Left: Back + Title */}
+      <div className="flex items-start gap-3">
+        <button
+          onClick={() => navigate('/admin')}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors mt-1 sm:mt-0"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
+        </button>
+
+        <div>
+          <h2 className="text-xl sm:text-3xl font-bold text-teal-800 leading-tight">
+            Coding Lab Analytics
+          </h2>
+          <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+            Track coding practice metrics and performance
+          </p>
         </div>
       </div>
+
+      {/* Right: Actions (Desktop) */}
+      <div className="hidden sm:flex gap-2">
+        <button
+          onClick={() => setShowChartModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+        >
+          <PieChart className="w-4 h-4" />
+          View Charts
+        </button>
+
+        <button
+          onClick={exportToExcel}
+          disabled={isExporting}
+          className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+        >
+          {isExporting ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Exporting
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Export Excel
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+
+    {/* Mobile Actions */}
+    <div className="mt-4 flex gap-2 sm:hidden">
+      <button
+        onClick={() => setShowChartModal(true)}
+        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium"
+      >
+        <PieChart className="w-4 h-4" />
+        Charts
+      </button>
+
+      <button
+        onClick={exportToExcel}
+        disabled={isExporting}
+        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+      >
+        {isExporting ? (
+          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        Export
+      </button>
+    </div>
+
+  </div>
+</div>
+
 
       {/* Error Alert */}
       {error && (

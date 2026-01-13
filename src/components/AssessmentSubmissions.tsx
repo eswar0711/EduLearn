@@ -1,15 +1,15 @@
-// src/components/AssessmentSubmissions.tsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { Question, Submission } from '../utils/supabaseClient';
-
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { toast } from 'react-toastify';
 import PremiumLoader from '../layouts/PremiumLoader';
-
 
 interface SubmissionWithUser extends Submission {
   student_name?: string;
   student_email?: string;
+  assessment_title?: string;
 }
 
 interface AssessmentSubmissionsProps {
@@ -25,6 +25,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [editScores, setEditScores] = useState<Record<string, string>>({});
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -33,6 +34,13 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
 
   const fetchData = async () => {
     setLoading(true);
+
+    // Fetch assessment title
+    const { data: assessmentData } = await supabase
+      .from('assessments')
+      .select('title')
+      .eq('id', assessmentId)
+      .single();
 
     // Fetch submissions for this assessment
     const { data: subs, error: subsError } = await supabase
@@ -48,7 +56,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
 
     // Fetch student info for each submission
     const submissionsWithUsers: SubmissionWithUser[] = [];
-    
+
     if (subs) {
       for (const sub of subs) {
         const { data: userData } = await supabase
@@ -61,6 +69,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
           ...sub,
           student_name: userData?.full_name || 'Student',
           student_email: userData?.email || '-',
+          assessment_title: assessmentData?.title || 'Assessment',
         });
       }
     }
@@ -84,7 +93,7 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
   const saveTheoryScore = async (submissionId: string) => {
     const score = Number(editScores[submissionId]);
     if (isNaN(score)) {
-      alert('Please enter a valid number');
+      toast.error('Please enter a valid number');
       return;
     }
 
@@ -95,11 +104,11 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
 
     if (error) {
       console.error('Error saving score:', error);
-      alert('Error saving score');
+      toast.error('Error saving score');
       return;
     }
 
-    alert('Score saved successfully!');
+    toast.success('Score saved successfully!');
     fetchData(); // Refresh data
   };
 
@@ -120,6 +129,120 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
     return getTheoryQuestions().reduce((sum, q) => sum + q.marks, 0);
   };
 
+  const downloadExcel = async () => {
+    if (submissions.length === 0) {
+      toast.warning('No submissions to export');
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const assessmentTitle = submissions[0]?.assessment_title || 'Assessment';
+
+      // Create Summary Sheet Data
+      const summaryData = submissions.map((sub) => ({
+        'Student Name': sub.student_name || '-',
+        'Student Email': sub.student_email || '-',
+        'Submission Date': sub.submitted_at
+          ? new Date(sub.submitted_at).toLocaleString('en-IN')
+          : '-',
+        'MCQ Score': sub.mcq_score || 0,
+        'Total Score': sub.total_score || 0,
+        'Theory Score': sub.theory_score || 0,
+         'Status': sub.theory_score === null ? 'Pending' : 'Graded',
+      }));
+
+      // Create Detailed Sheet Data
+      const detailedData: any[] = [];
+
+      submissions.forEach((sub, idx) => {
+        // Add student header
+        detailedData.push({
+          'Student Name': sub.student_name,
+          'Email': sub.student_email,
+          'Submitted': sub.submitted_at
+            ? new Date(sub.submitted_at).toLocaleString('en-IN')
+            : '-',
+          'MCQ Score': sub.mcq_score || 0,
+          'Total Score': sub.total_score || 0,
+        });
+
+        // Add empty row
+        detailedData.push({});
+
+        // Add theory questions and answers
+        const theoryAnswers = getTheoryAnswers(sub);
+        if (theoryAnswers.length > 0) {
+          theoryAnswers.forEach((answer, qIdx) => {
+            detailedData.push({
+              'Question Number': `Q${qIdx + 1}`,
+              'Question': answer.questionText,
+              'Max Marks': answer.maxMarks,
+              'Student Answer': answer.studentAnswer,
+            });
+          });
+        } else {
+          detailedData.push({
+            'Question Number': 'N/A',
+            'Question': 'No theory questions in this assessment',
+          });
+        }
+
+        // Add separator
+        if (idx < submissions.length - 1) {
+          detailedData.push({});
+        }
+      });
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Add Summary Sheet
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      summarySheet['!cols'] = [
+        { wch: 25 },
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+      ];
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+
+      // Add Detailed Sheet
+      const detailedSheet = XLSX.utils.json_to_sheet(detailedData);
+      detailedSheet['!cols'] = [
+        { wch: 18 },
+        { wch: 50 },
+        { wch: 12 },
+        { wch: 40 },
+        { wch: 12 },
+      ];
+      XLSX.utils.book_append_sheet(wb, detailedSheet, 'Detailed Answers');
+
+      // Generate filename with assessment name and date
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `${assessmentTitle}_Submissions_${dateStr}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Excel file "${filename}" downloaded successfully!`, {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast.error('Failed to export Excel file', {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -131,18 +254,40 @@ const AssessmentSubmissions: React.FC<AssessmentSubmissionsProps> = ({
               {submissions.length} student{submissions.length !== 1 ? 's' : ''} submitted
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={downloadExcel}
+              disabled={isExporting || submissions.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download submissions as Excel"
+            >
+              {isExporting ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download Excel
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <PremiumLoader message="Loading submissions..." />
+            // <div className="text-center py-8 text-gray-600">Loading submissions...</div>
+            
           ) : submissions.length === 0 ? (
             <div className="text-center py-8 text-gray-600">
               No submissions yet for this assessment.

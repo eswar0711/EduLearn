@@ -90,42 +90,67 @@ const ChangePassword: React.FC = () => {
 
 
   const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage(null);
+  e.preventDefault();
+  setMessage(null);
 
+  if (!validateForm()) return;
 
-    if (!validateForm()) return;
+  setLoading(true);
 
+  try {
+    // 1️⃣ Get current logged-in user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    setLoading(true);
-
-
-    try {
-      // Update password
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-
-      if (error) {
-        setMessage({ type: 'error', text: error.message });
-      } else {
-        setMessage({ type: 'success', text: '✅ Password changed successfully! Please log in again.' });
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setPasswordStrength(null);
-
-
-        // Optional: Log out after successful password change
-        setTimeout(() => {
-          supabase.auth.signOut();
-        }, 2000);
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'An unexpected error occurred.' });
-    } finally {
-      setLoading(false);
+    if (userError || !user?.email) {
+      throw new Error('User session expired. Please log in again.');
     }
-  };
+
+    // 2️⃣ Re-authenticate using CURRENT password
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      setMessage({ type: 'error', text: 'Current password is incorrect.' });
+      setLoading(false);
+      return;
+    }
+
+    // 3️⃣ Update password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      setMessage({ type: 'error', text: updateError.message });
+    } else {
+      setMessage({
+        type: 'success',
+        text: '✅ Password changed successfully! Please log in again.',
+      });
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordStrength(null);
+
+      // 4️⃣ Logout after password change
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+      }, 2000);
+    }
+  } catch (err: any) {
+    setMessage({ type: 'error', text: err.message || 'Something went wrong.' });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
 
   return (

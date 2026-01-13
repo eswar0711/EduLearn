@@ -109,7 +109,15 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
                 className="w-11 h-11 object-contain"
               />
             </div>
-            <h1 className="text-xl font-bold text-gray-800">EduVerge</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-600">
+  <span className="bg-gradient-to-r from-purple-800 to-green-500 bg-clip-text text-transparent">
+    EduVerge
+  </span>
+</h1>
+
+
+
+
           </div>
           <p className="text-sm font-medium text-gray-800">
             {user.full_name || 'User'}
@@ -168,6 +176,11 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = ({ user }) => {
                 to="/coding-management"
                 icon={<Code2 className="w-5 h-5" />}
                 label="Coding Problems"
+              />
+              <NavItem
+              to="/faculty/student"
+              icon={<Users className='w-5 h-5'/>}
+              label='Student Management'
               />
             </>
           )}

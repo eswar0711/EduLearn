@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabaseClient';
 import type { User } from '../../utils/supabaseClient';
 import { User as UserIcon, Mail, Briefcase, Calendar, ArrowLeft } from 'lucide-react';
+import profilecard from '../../assets/ProfilecardBg.avif'
 import PremiumLoader from '../../layouts/PremiumLoader';
 const UserProfile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -60,13 +61,33 @@ const UserProfile: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Profile Header */}
-          <div className="bg-gradient-to-r from-purple-500 to-yellow-600 px-8 py-12 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white bg-opacity-20 mb-4">
-              <UserIcon className="w-10 h-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">{user?.full_name || 'User'}</h2>
-            <p className="text-blue-100 mt-1 capitalize">{user?.role}</p>
-          </div>
+          {/* Profile Header */}
+<div
+  className="relative px-8 py-12 text-center bg-cover bg-center"
+  style={{
+    backgroundImage: `url(${profilecard})`,
+  }}
+>
+  {/* Overlay for readability */}
+  {/* <div className="absolute inset-0 bg-gradient-to-r from-purple-100 to-yellow-100"></div> */}
+<div className="absolute inset-0 bg-gradient-to-br from-purple-900/70 via-purple-700/50 to-yellow-600/70"></div>
+
+  {/* Content */}
+  <div className="relative z-10">
+    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-md mb-4">
+      <UserIcon className="w-10 h-10 text-white" />
+    </div>
+
+    <h2 className="text-2xl font-bold text-white">
+      {user?.full_name || 'User'}
+    </h2>
+
+    <p className="text-blue-100 mt-1 capitalize">
+      {user?.role}
+    </p>
+  </div>
+</div>
+
 
           {/* Profile Details */}
           <div className="p-8 space-y-6">

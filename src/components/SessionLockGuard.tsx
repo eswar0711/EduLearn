@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { AlertCircle } from 'lucide-react';
+import PremiumLoader from '../layouts/PremiumLoader';
 
 interface SessionLockGuardProps {
   children: React.ReactNode;
@@ -73,7 +74,7 @@ const SessionLockGuard: React.FC<SessionLockGuardProps> = ({ children }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-lg text-gray-600">Verifying session...</div>
+        <PremiumLoader message="Verifying session..." />
       </div>
     );
   }
