@@ -171,7 +171,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
               height: '160px'
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 via-blue-800/70 to-transparent transition-opacity group-hover:opacity-95" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-950/80 via-blue-800/70 to-transparent transition-opacity group-hover:opacity-95" />
             <div className="relative z-10 p-6 text-white h-full flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -200,7 +200,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
               height: '160px'
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/90 via-purple-800/70 to-transparent transition-opacity group-hover:opacity-95" />
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/70 via-purple-800/70 to-transparent transition-opacity group-hover:opacity-95" />
             <div className="relative z-10 p-6 text-white h-full flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -346,7 +346,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
                           ) : status === 'in_progress' ? (
                             <button
                               onClick={() => handleResumeTest(assessment.id)}
-                              className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 shadow-sm font-medium"
+                              className="w-full sm:w-auto px-4 py-2 bg-orange-200 text-orange-700 rounded-lg hover:bg-orange-300 transition-colors flex items-center justify-center gap-2 shadow-sm font-medium"
                             >
                               <RotateCw className="w-4 h-4" />
                               Resume Test
@@ -354,7 +354,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user }) => {
                           ) : (
                             <button
                               onClick={() => handleStartTest(assessment)}
-                              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm font-medium"
+                              className="w-full sm:w-auto px-4 py-2 bg-green-200 text-green-700 rounded-lg hover:bg-green-300 transition-colors flex items-center justify-center gap-2 shadow-sm font-medium"
                             >
                               <PlayCircle className="w-4 h-4" />
                               Start Test
