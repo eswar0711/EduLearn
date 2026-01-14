@@ -149,6 +149,12 @@ const addNewUser = async () => {
       if (data?.error) throw new Error(data.error);
 
       setSuccessMessage('User created successfully!');
+      // ✅ Auto-hide after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      
+
       setAddUserForm({ email: '', password: '', full_name: '', role: 'student' });
       setShowAddUserModal(false);
       
